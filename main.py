@@ -13,7 +13,7 @@ class GUI:
     def __init__(self, root: TkinterDnD.Tk) -> None:
         self.root = root
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-        self.root.title("YouTube manager")
+        self.root.title("FFmpeg Crop GUI")
 
         self.entry_width = 80
         self.label_width = 15
