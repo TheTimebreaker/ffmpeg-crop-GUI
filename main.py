@@ -1,9 +1,129 @@
+import datetime
+import json
+import re
 import subprocess
 import tkinter as tk
-from tkinter import filedialog, ttk
-from typing import Any
+from dataclasses import dataclass
+from tkinter import filedialog, messagebox, ttk
+from typing import Any, Literal, overload
 
 from tkinterdnd2 import DND_FILES, TkinterDnD
+
+
+class Timestamp:
+    @overload
+    def __init__(self, duration: float) -> None: ...
+
+    @overload
+    def __init__(self, hh: int | None, mm: int | None, ss: int | None, ms: int | None) -> None: ...
+    def __init__(self, *args: Any, **_: Any) -> None:
+        if len(args) == 1:
+            duration: float = args[0]
+            delta = datetime.timedelta(seconds=duration)
+            hh = int(str(delta).split(":")[0])
+            mm = int(str(delta).split(":")[1])
+            ss = int(str(delta).split(":")[2].split(".")[0])
+            ms = int(str(delta).split(":")[2].split(".")[1][0:3])
+            self.hh: int | None = hh
+            self.mm: int | None = mm
+            self.ss: int | None = ss
+            self.ms: int | None = ms
+
+        elif len(args) == 4:
+            hh, mm, ss, ms = args
+            self.hh = hh
+            self.mm = mm
+            self.ss = ss
+            self.ms = ms
+
+    def __bool__(self) -> bool:
+        return all(value is not None for value in [self.hh, self.mm, self.ss, self.ms])
+
+    def __str__(self) -> str:
+        if not self.__bool__():
+            raise TypeError("Could not convert Timestamp to string due to some values being None.")
+        return f"{str(self.hh).zfill(2)}:{str(self.mm).zfill(2)}:{str(self.ss).zfill(2)}.{str(self.ms).zfill(3)}"
+
+
+@dataclass
+class VideoInfo:
+    width: int
+    height: int
+    duration: Timestamp
+    max_volume: float
+
+
+def get_video_info(path: str) -> VideoInfo:
+    def get_whd(path: str) -> tuple[int, int, Timestamp]:
+        cmd = [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height,duration",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "json",
+            path,
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        data = json.loads(result.stdout)
+
+        stream = data["streams"][0]
+
+        width = int(stream["width"])
+        height = int(stream["height"])
+
+        # Duration: stream duration may be missing → fall back to format duration
+        duration = float(stream.get("duration", data["format"]["duration"]))
+
+        return width, height, Timestamp(duration)
+
+    def get_max_volume(path: str) -> float:
+        cmd = [
+            "ffmpeg",
+            "-hide_banner",
+            "-nostats",
+            "-loglevel",
+            "info",
+            "-i",
+            path,
+            "-map",
+            "0:a:0",
+            "-vn",
+            "-sn",
+            "-dn",
+            "-filter:a",
+            "volumedetect",
+            "-f",
+            "null",
+            "NUL",
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        string = result.stderr
+        for line in string.split("\n"):
+            if all(s in line for s in ("Parsed_volumedetect", "max_volume")):
+                regex = re.search(r"max_volume: (\-?[\d]{1,5}\.[\d]{1}) dB", line)
+                if not regex:
+                    raise ValueError("Cannot determine max_volume for this file...")
+                max_volume = float(regex.group(1))
+                return max_volume
+        raise ValueError("Cannot determine max_volume for this file...")
+
+    width, height, duration = get_whd(path)
+    max_volume = get_max_volume(path)
+
+    return VideoInfo(
+        width=width,
+        height=height,
+        duration=duration,
+        max_volume=max_volume,
+    )
 
 
 class GUI:
@@ -14,36 +134,36 @@ class GUI:
         self.root = root
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.root.title("FFmpeg Crop GUI")
+        self.root.minsize(800, 0)
+        self.root.resizable(True, False)
 
-        self.entry_width = 80
         self.label_width = 15
+        self.max_volume: float = 0.0
+
+        self.root.columnconfigure(0, weight=0)
+        self.root.columnconfigure(1, weight=1)
+        self.root.columnconfigure(2, weight=1)
 
         # File path
         self.source_label = ttk.Label(
             self.root,
             text="Source file",
         )
-        self.source_label.grid(row=0, column=0, sticky="w", padx=self.padx, pady=self.pady)
+        self.source_label.grid(row=0, column=0, sticky="ew", padx=self.padx, pady=self.pady)
 
-        self.source_file_txt_null = "Click the button on the right or Drag & drop file ..."
+        self.source_file_txt_null = "Double click here or Drag & drop file ..."
         self.source_file_var = tk.StringVar(self.root, value=self.source_file_txt_null)
         self.downloadlocation_entry = ttk.Label(
             self.root,
             textvariable=self.source_file_var,
-            width=self.entry_width,
         )
         self.downloadlocation_entry.drop_target_register(DND_FILES)  # type:ignore
         self.downloadlocation_entry.dnd_bind(  # type:ignore
             "<<Drop>>",
-            self.on_drop,
+            self.set_file_ondrop,
         )
-
-        self.downloadlocation_entry.grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady)
-        ttk.Button(
-            self.root,
-            text="Select Location",
-            command=self.set_download_location,
-        ).grid(row=0, column=2, sticky="ew", padx=self.padx, pady=self.pady)
+        self.downloadlocation_entry.bind("<Double-Button-1>", self.set_file_dialogue)
+        self.downloadlocation_entry.grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady, columnspan=2)
 
         # Left top pixel
         ttk.Label(
@@ -57,13 +177,13 @@ class GUI:
             textvariable=self.left_top_x,
             from_=0,
             to=5000,
-        ).grid(row=1, column=1, sticky="w", padx=self.padx, pady=self.pady)
+        ).grid(row=1, column=1, sticky="ew", padx=self.padx, pady=self.pady)
         ttk.Spinbox(
             self.root,
             textvariable=self.left_top_y,
             from_=0,
             to=5000,
-        ).grid(row=1, column=2, sticky="w", padx=self.padx, pady=self.pady)
+        ).grid(row=1, column=2, sticky="ew", padx=self.padx, pady=self.pady)
 
         # Box Dimensions
         ttk.Label(
@@ -71,54 +191,188 @@ class GUI:
             text="Box width (X / Y)",
         ).grid(row=2, column=0, sticky="w", padx=self.padx, pady=self.pady)
         self.width_x = tk.IntVar(self.root)
-        self.width_y = tk.IntVar(self.root)
+        self.height_y = tk.IntVar(self.root)
         ttk.Spinbox(
             self.root,
             textvariable=self.width_x,
             from_=0,
             to=5000,
-        ).grid(row=2, column=1, sticky="w", padx=self.padx, pady=self.pady)
+        ).grid(row=2, column=1, sticky="ew", padx=self.padx, pady=self.pady)
         ttk.Spinbox(
             self.root,
-            textvariable=self.width_y,
+            textvariable=self.height_y,
             from_=0,
             to=5000,
-        ).grid(row=2, column=2, sticky="w", padx=self.padx, pady=self.pady)
+        ).grid(row=2, column=2, sticky="ew", padx=self.padx, pady=self.pady)
 
         ttk.Separator(self.root, orient="horizontal").grid(row=3, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        ttk.Label(
+            self.root,
+            text="Timestamps Start / End (HH:MM:SS.MS)",
+        ).grid(row=4, column=0, sticky="ew", padx=self.padx, pady=self.pady)
 
+        self.timestamp_frame = ttk.Frame(self.root)
+        self.timestamp_frame.grid(row=4, column=1, sticky="ew", padx=self.padx, pady=self.pady, columnspan=2)
+        self.hh_start = ttk.Spinbox(self.timestamp_frame, from_=0, to=99, width=3, format="%02.0f")
+        self.hh_start.pack(side="left", fill="x", expand=True)
+        ttk.Label(self.timestamp_frame, text=" : ").pack(side="left")
+        self.mm_start = ttk.Spinbox(self.timestamp_frame, from_=0, to=59, width=3, format="%02.0f")
+        self.mm_start.pack(side="left", fill="x", expand=True)
+        ttk.Label(self.timestamp_frame, text=" : ").pack(side="left")
+        self.ss_start = ttk.Spinbox(self.timestamp_frame, from_=0, to=59, width=3, format="%02.0f")
+        self.ss_start.pack(side="left", fill="x", expand=True)
+        ttk.Label(self.timestamp_frame, text=" . ").pack(side="left")
+        self.ms_start = ttk.Spinbox(self.timestamp_frame, from_=0, to=999, width=4)
+        self.ms_start.pack(side="left", fill="x", expand=True)
+        ttk.Separator(self.timestamp_frame, orient="vertical").pack(side="left", expand=True, fill="y")
+
+        self.hh_end = ttk.Spinbox(self.timestamp_frame, from_=0, to=99, width=3, format="%02.0f")
+        self.hh_end.pack(side="left", fill="x", expand=True)
+        ttk.Label(self.timestamp_frame, text=" : ").pack(side="left")
+        self.mm_end = ttk.Spinbox(self.timestamp_frame, from_=0, to=59, width=3, format="%02.0f")
+        self.mm_end.pack(side="left", fill="x", expand=True)
+        ttk.Label(self.timestamp_frame, text=" : ").pack(side="left")
+        self.ss_end = ttk.Spinbox(self.timestamp_frame, from_=0, to=59, width=3, format="%02.0f")
+        self.ss_end.pack(side="left", fill="x", expand=True)
+        ttk.Label(self.timestamp_frame, text=" . ").pack(side="left")
+        self.ms_end = ttk.Spinbox(self.timestamp_frame, from_=0, to=999, width=4)
+        self.ms_end.pack(side="left", fill="x", expand=True)
+
+        ttk.Separator(self.root, orient="horizontal").grid(row=5, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+
+        ttk.Label(
+            self.root,
+            text="Additional settings",
+        ).grid(row=6, column=0, sticky="ew", padx=self.padx, pady=self.pady)
+
+        self.autonormalize_var = tk.BooleanVar(self.root, True)
+        self.autonormalize_btn = ttk.Checkbutton(
+            self.root,
+            text="Automatically normalize audio to -1.0 dB",
+            variable=self.autonormalize_var,
+        )
+        self.autonormalize_btn.grid(row=6, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
+
+        ttk.Separator(self.root, orient="horizontal").grid(row=7, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
         self.process_button = ttk.Button(
             self.root,
             text="Process",
             command=self.process,
         )
-        self.process_button.grid(row=4, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        self.process_button.grid(row=8, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
 
-    def set_download_location(self) -> None:
+    def set_file_dialogue(self, _: Any) -> None:
         path = filedialog.askopenfilename()
         if path:
-            self.source_file_var.set(path)
+            self.set_file(path)
 
-    def on_drop(self, event: Any) -> None:
+    def set_file_ondrop(self, event: Any) -> None:
         files = self.root.tk.splitlist(event.data)
         if files:
-            self.source_file_var.set(files[0])
+            self.set_file(files[0])
+
+    def set_file(self, path: str) -> None:
+        v = get_video_info(path)
+        self.max_volume = v.max_volume
+        self.source_file_var.set(path)
+        self.width_x.set(v.width)
+        self.height_y.set(v.height)
+        self.left_top_x.set(0)
+        self.left_top_y.set(0)
+        self.hh_start.set(0)
+        self.mm_start.set(0)
+        self.ss_start.set(0)
+        self.ms_start.set(0)
+        self.hh_end.set(v.duration.hh)
+        self.mm_end.set(v.duration.mm)
+        self.ss_end.set(v.duration.ss)
+        self.ms_end.set(v.duration.ms)
+
+    def get_timestamps(self) -> tuple[Timestamp, Timestamp] | Literal[False]:
+        def validate_timestamp(
+            hh: str | int | None,
+            mm: str | int | None,
+            ss: str | int | None,
+            ms: str | int | None,
+        ) -> Timestamp:
+            if hh is not None and mm is not None and ss is not None and ms is not None:
+                return Timestamp(int(hh), int(mm), int(ss), int(ms))
+            raise TypeError()
+
+        def get_timestamp_start() -> Timestamp:
+            hh: str | int | None = self.hh_start.get()
+            mm: str | int | None = self.mm_start.get()
+            ss: str | int | None = self.ss_start.get()
+            ms: str | int | None = self.ms_start.get()
+
+            return validate_timestamp(hh, mm, ss, ms)
+
+        def get_timestamp_end() -> Timestamp:
+            hh: str | int | None = self.hh_end.get()
+            mm: str | int | None = self.mm_end.get()
+            ss: str | int | None = self.ss_end.get()
+            ms: str | int | None = self.ms_end.get()
+
+            return validate_timestamp(hh, mm, ss, ms)
+
+        try:
+            start = get_timestamp_start()
+            end = get_timestamp_end()
+        except ValueError:
+            messagebox.showerror("Invalid timestamps", message="Your timestamp data is invalid! Remember to only put in NUMBERS.")
+            return False
+        return start, end
+
+    def get_crop(self) -> tuple[int, int, int, int] | Literal[False]:
+        try:
+            width = self.width_x.get()
+            height = self.height_y.get()
+            left_top_x = self.left_top_x.get()
+            left_top_y = self.left_top_y.get()
+            return width, height, left_top_x, left_top_y
+        except tk.TclError:
+            messagebox.showerror("Invalid CROP values", "Your crop data is invalid! Remember to only put in NUMBERS.")
+            return False
 
     def process(self) -> None:
+        timestamps = self.get_timestamps()
+        if timestamps is False:
+            return
+        timestamp_start, timestamp_end = timestamps
+
+        crops = self.get_crop()
+        if crops is False:
+            return
+        width, height, left_top_x, left_top_y = crops
+
         cmd = [
             "ffmpeg",
             "-i",
             self.source_file_var.get(),
-            "-vf",
-            f"crop={self.width_x.get()}:{self.width_y.get()}:{self.left_top_x.get()}:{self.left_top_y.get()}",
-            ".".join(self.source_file_var.get().split(".")[0:-1]) + "-cropped." + self.source_file_var.get().split(".")[-1],
+            "-y",  # overwrite always
         ]
+
+        # timestamp command
+        if timestamp_start:
+            cmd.append("-ss")
+            cmd.append(str(timestamp_start))
+        if timestamp_end:
+            cmd.append("-to")
+            cmd.append(str(timestamp_end))
+
+        # crop command
+        cmd.append("-filter:v")
+        cmd.append(f"crop={width}:{height}:{left_top_x}:{left_top_y}")
+
+        # normalization
+        if self.autonormalize_var.get():
+            cmd.append("-filter:a")
+            cmd.append(f"volume={-1 * self.max_volume - 1}")
+
+        # output filename
+        cmd.append(".".join(self.source_file_var.get().split(".")[0:-1]) + "-cropped." + self.source_file_var.get().split(".")[-1])
+
         subprocess.run(cmd, shell=True)
-        self.source_file_var.set(self.source_file_txt_null)
-        self.width_x.set(0)
-        self.width_y.set(0)
-        self.left_top_x.set(0)
-        self.left_top_y.set(0)
 
     def on_close(self) -> None:
         self.root.destroy()
@@ -132,3 +386,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    print(get_video_info(r"D:\OBS recordings\2026-01-10 22-14-54-cropped.mkv"))
