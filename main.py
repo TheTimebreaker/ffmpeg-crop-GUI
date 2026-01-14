@@ -165,11 +165,13 @@ class GUI:
         self.downloadlocation_entry.bind("<Double-Button-1>", self.set_file_dialogue)
         self.downloadlocation_entry.grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady, columnspan=2)
 
+        ttk.Separator(self.root, orient="horizontal").grid(row=1, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+
         # Left top pixel
         ttk.Label(
             self.root,
             text="Top left corner (X / Y)",
-        ).grid(row=1, column=0, sticky="w", padx=self.padx, pady=self.pady)
+        ).grid(row=2, column=0, sticky="w", padx=self.padx, pady=self.pady)
         self.left_top_x = tk.IntVar(self.root)
         self.left_top_y = tk.IntVar(self.root)
         ttk.Spinbox(
@@ -177,19 +179,19 @@ class GUI:
             textvariable=self.left_top_x,
             from_=0,
             to=5000,
-        ).grid(row=1, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+        ).grid(row=2, column=1, sticky="ew", padx=self.padx, pady=self.pady)
         ttk.Spinbox(
             self.root,
             textvariable=self.left_top_y,
             from_=0,
             to=5000,
-        ).grid(row=1, column=2, sticky="ew", padx=self.padx, pady=self.pady)
+        ).grid(row=2, column=2, sticky="ew", padx=self.padx, pady=self.pady)
 
         # Box Dimensions
         ttk.Label(
             self.root,
             text="Box width (X / Y)",
-        ).grid(row=2, column=0, sticky="w", padx=self.padx, pady=self.pady)
+        ).grid(row=3, column=0, sticky="w", padx=self.padx, pady=self.pady)
         self.width_x = tk.IntVar(self.root)
         self.height_y = tk.IntVar(self.root)
         ttk.Spinbox(
@@ -197,22 +199,22 @@ class GUI:
             textvariable=self.width_x,
             from_=0,
             to=5000,
-        ).grid(row=2, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+        ).grid(row=3, column=1, sticky="ew", padx=self.padx, pady=self.pady)
         ttk.Spinbox(
             self.root,
             textvariable=self.height_y,
             from_=0,
             to=5000,
-        ).grid(row=2, column=2, sticky="ew", padx=self.padx, pady=self.pady)
+        ).grid(row=3, column=2, sticky="ew", padx=self.padx, pady=self.pady)
 
-        ttk.Separator(self.root, orient="horizontal").grid(row=3, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        ttk.Separator(self.root, orient="horizontal").grid(row=4, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
         ttk.Label(
             self.root,
             text="Timestamps Start / End (HH:MM:SS.MS)",
-        ).grid(row=4, column=0, sticky="ew", padx=self.padx, pady=self.pady)
+        ).grid(row=5, column=0, sticky="ew", padx=self.padx, pady=self.pady)
 
         self.timestamp_frame = ttk.Frame(self.root)
-        self.timestamp_frame.grid(row=4, column=1, sticky="ew", padx=self.padx, pady=self.pady, columnspan=2)
+        self.timestamp_frame.grid(row=5, column=1, sticky="ew", padx=self.padx, pady=self.pady, columnspan=2)
         self.hh_start = ttk.Spinbox(self.timestamp_frame, from_=0, to=99, width=3, format="%02.0f")
         self.hh_start.pack(side="left", fill="x", expand=True)
         ttk.Label(self.timestamp_frame, text=" : ").pack(side="left")
@@ -238,12 +240,12 @@ class GUI:
         self.ms_end = ttk.Spinbox(self.timestamp_frame, from_=0, to=999, width=4)
         self.ms_end.pack(side="left", fill="x", expand=True)
 
-        ttk.Separator(self.root, orient="horizontal").grid(row=5, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        ttk.Separator(self.root, orient="horizontal").grid(row=6, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
 
         ttk.Label(
             self.root,
             text="Additional settings",
-        ).grid(row=6, column=0, sticky="ew", padx=self.padx, pady=self.pady)
+        ).grid(row=7, column=0, sticky="ew", padx=self.padx, pady=self.pady)
 
         self.autonormalize_var = tk.BooleanVar(self.root, True)
         self.autonormalize_btn = ttk.Checkbutton(
@@ -251,15 +253,15 @@ class GUI:
             text="Automatically normalize audio to -1.0 dB",
             variable=self.autonormalize_var,
         )
-        self.autonormalize_btn.grid(row=6, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
+        self.autonormalize_btn.grid(row=7, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
 
-        ttk.Separator(self.root, orient="horizontal").grid(row=7, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        ttk.Separator(self.root, orient="horizontal").grid(row=8, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
         self.process_button = ttk.Button(
             self.root,
             text="Process",
             command=self.process,
         )
-        self.process_button.grid(row=8, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        self.process_button.grid(row=9, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
 
     def set_file_dialogue(self, _: Any) -> None:
         path = filedialog.askopenfilename()
