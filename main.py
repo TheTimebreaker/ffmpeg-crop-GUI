@@ -386,4 +386,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    print(get_video_info(r"D:\OBS recordings\2026-01-10 22-14-54-cropped.mkv"))
