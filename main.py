@@ -44,6 +44,11 @@ class Timestamp:
             raise TypeError("Could not convert Timestamp to string due to some values being None.")
         return f"{str(self.hh).zfill(2)}:{str(self.mm).zfill(2)}:{str(self.ss).zfill(2)}.{str(self.ms).zfill(3)}"
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Timestamp):
+            raise NotImplementedError
+        return self.hh == other.hh and self.mm == other.mm and self.ss == other.ss and self.ms == other.ms
+
 
 @dataclass
 class VideoInfo:
@@ -277,10 +282,16 @@ class GUI:
         v = get_video_info(path)
         self.max_volume = v.max_volume
         self.source_file_var.set(path)
+
         self.width_x.set(v.width)
         self.height_y.set(v.height)
         self.left_top_x.set(0)
         self.left_top_y.set(0)
+        self.original_width = v.width
+        self.original_height = v.height
+        self.original_left_top_x = 0
+        self.original_left_top_y = 0
+
         self.hh_start.set(0)
         self.mm_start.set(0)
         self.ss_start.set(0)
@@ -289,6 +300,8 @@ class GUI:
         self.mm_end.set(v.duration.mm)
         self.ss_end.set(v.duration.ss)
         self.ms_end.set(v.duration.ms)
+        self.original_start = Timestamp(0, 0, 0, 0)
+        self.original_end = Timestamp(v.duration.hh, v.duration.mm, v.duration.ss, v.duration.ms)
 
     def get_timestamps(self) -> tuple[Timestamp, Timestamp] | Literal[False]:
         def validate_timestamp(
@@ -347,6 +360,8 @@ class GUI:
             return
         width, height, left_top_x, left_top_y = crops
 
+        video_copy = True
+        audio_copy = True
         cmd = [
             "ffmpeg",
             "-i",
@@ -355,25 +370,44 @@ class GUI:
         ]
 
         # timestamp command
-        if timestamp_start:
+        if timestamp_start and timestamp_start != self.original_start:
             cmd.append("-ss")
             cmd.append(str(timestamp_start))
-        if timestamp_end:
+            video_copy = False
+        if timestamp_end and timestamp_end != self.original_end:
             cmd.append("-to")
             cmd.append(str(timestamp_end))
+            video_copy = False
 
         # crop command
-        cmd.append("-filter:v")
-        cmd.append(f"crop={width}:{height}:{left_top_x}:{left_top_y}")
+        if (
+            width != self.original_width
+            or height != self.original_height
+            or left_top_x != self.original_left_top_x
+            or left_top_y != self.original_left_top_y
+        ):
+            cmd.append("-filter:v")
+            cmd.append(f"crop={width}:{height}:{left_top_x}:{left_top_y}")
+            video_copy = False
 
         # normalization
         if self.autonormalize_var.get():
             cmd.append("-filter:a")
             cmd.append(f"volume={-1 * self.max_volume - 1}")
+            audio_copy = False
+
+        # COPYING CODECS
+        if video_copy:
+            cmd.append("-c:v")
+            cmd.append("copy")
+        if audio_copy:
+            cmd.append("-c:a")
+            cmd.append("copy")
 
         # output filename
         cmd.append(".".join(self.source_file_var.get().split(".")[0:-1]) + "-cropped." + self.source_file_var.get().split(".")[-1])
 
+        print(cmd)
         subprocess.run(cmd, shell=True)
 
     def on_close(self) -> None:
