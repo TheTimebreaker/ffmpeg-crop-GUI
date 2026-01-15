@@ -393,7 +393,7 @@ class GUI:
         # normalization
         if self.autonormalize_var.get():
             cmd.append("-filter:a")
-            cmd.append(f"volume={-1 * self.max_volume - 1}")
+            cmd.append(f"volume={-1 * self.max_volume - 1}dB")
             audio_copy = False
 
         # COPYING CODECS
