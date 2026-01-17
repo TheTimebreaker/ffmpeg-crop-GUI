@@ -426,7 +426,10 @@ class GUI:
         cmd.append(".".join(self.source_file_var.get().split(".")[0:-1]) + "-cropped." + self.source_file_var.get().split(".")[-1])
 
         print(cmd)
-        subprocess.run(cmd, shell=True)
+        if sys.platform == "win32":
+            subprocess.run(cmd, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+        else:
+            subprocess.run(cmd, shell=True)
 
     def on_close(self) -> None:
         self.root.destroy()
