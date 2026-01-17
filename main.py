@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import subprocess
+import sys
 import tkinter as tk
 from dataclasses import dataclass
 from tkinter import filedialog, messagebox, ttk
@@ -83,7 +84,7 @@ def get_video_info(path: str) -> VideoInfo:
             path,
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(cmd, **subprocess_kwargs)  # type:ignore # necessary because mypy is stupid with overloads
         data = json.loads(result.stdout)
 
         stream = data["streams"][0]
@@ -118,7 +119,7 @@ def get_video_info(path: str) -> VideoInfo:
             "NUL",
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(cmd, **subprocess_kwargs)  # type:ignore # necessary because mypy is stupid with overloads
         string = result.stderr
         for line in string.split("\n"):
             if all(s in line for s in ("Parsed_volumedetect", "max_volume")):
@@ -128,6 +129,14 @@ def get_video_info(path: str) -> VideoInfo:
                 max_volume = float(regex.group(1))
                 return max_volume
         raise ValueError("Cannot determine max_volume for this file...")
+
+    subprocess_kwargs: dict[str, int | bool] = dict(
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    if sys.platform == "win32":
+        subprocess_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
 
     width, height, duration = get_whd(path)
     max_volume = get_max_volume(path)
