@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import re
 import subprocess
 import tkinter as tk
@@ -20,10 +21,17 @@ class Timestamp:
         if len(args) == 1:
             duration: float = args[0]
             delta = datetime.timedelta(seconds=duration)
+            logging.info("Duration %s - delta %s", duration, delta)
             hh = int(str(delta).split(":")[0])
             mm = int(str(delta).split(":")[1])
             ss = int(str(delta).split(":")[2].split(".")[0])
-            ms = int(str(delta).split(":")[2].split(".")[1][0:3])
+            try:
+                ms = int(str(delta).split(":")[2].split(".")[1][0:3])
+            except IndexError as error:
+                if "." not in str(delta).split(":")[2]:
+                    ms = 0
+                else:
+                    raise IndexError from error
             self.hh: int | None = hh
             self.mm: int | None = mm
             self.ss: int | None = ss
@@ -85,6 +93,7 @@ def get_video_info(path: str) -> VideoInfo:
 
         # Duration: stream duration may be missing → fall back to format duration
         duration = float(stream.get("duration", data["format"]["duration"]))
+        logging.info("duration: %s", duration)
 
         return width, height, Timestamp(duration)
 
