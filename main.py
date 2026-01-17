@@ -119,8 +119,10 @@ def get_video_info(path: str) -> VideoInfo:
             "NUL",
         ]
 
+        logging.info(" ".join(cmd))
         result = subprocess.run(cmd, **subprocess_kwargs)  # type:ignore # necessary because mypy is stupid with overloads
         string = result.stderr
+        logging.debug(string)
         for line in string.split("\n"):
             if all(s in line for s in ("Parsed_volumedetect", "max_volume")):
                 regex = re.search(r"max_volume: (\-?[\d]{1,5}\.[\d]{1}) dB", line)
@@ -136,7 +138,7 @@ def get_video_info(path: str) -> VideoInfo:
         check=True,
     )
     if sys.platform == "win32":
-        subprocess_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+        subprocess_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW  # supresses new window creation
 
     width, height, duration = get_whd(path)
     max_volume = get_max_volume(path)
