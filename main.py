@@ -427,7 +427,7 @@ class GUI:
         # output filename
         cmd.append(".".join(self.source_file_var.get().split(".")[0:-1]) + "-cropped." + self.source_file_var.get().split(".")[-1])
 
-        print(cmd)
+        print(" ".join(cmd))
         if sys.platform == "win32":
             subprocess.run(cmd, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
         else:
