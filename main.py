@@ -165,48 +165,88 @@ class GUI:
         self.label_width = 15
         self.max_volume: float = 0.0
 
-        self.root.columnconfigure(0, weight=0)
-        self.root.columnconfigure(1, weight=1)
-        self.root.columnconfigure(2, weight=1)
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill="both", expand=True)
 
-        # File path
-        self.source_label = ttk.Label(
-            self.root,
+        self.tab_input = self._tab_inout(self.notebook)
+        self.notebook.add(self.tab_input, text="Input / Output")
+
+        self.tab_crop = self._tab_crop(self.notebook)
+        self.notebook.add(self.tab_crop, text="Crop")
+
+        self.tab_trim = self._tab_trim(self.notebook)
+        self.notebook.add(self.tab_trim, text="Trim")
+
+    def _tab_inout(self, root: TkinterDnD.Tk | ttk.Notebook) -> ttk.Frame:
+        tab = ttk.Frame(root)
+
+        tab.columnconfigure(0, weight=0)
+        tab.columnconfigure(1, weight=1)
+        tab.columnconfigure(2, weight=1)
+
+        self.file_source_label = ttk.Label(
+            tab,
             text="Source file",
         )
-        self.source_label.grid(row=0, column=0, sticky="ew", padx=self.padx, pady=self.pady)
+        self.file_source_label.grid(row=0, column=0, sticky="ew", padx=self.padx, pady=self.pady)
 
-        self.source_file_txt_null = "Double click here or Drag & drop file ..."
-        self.source_file_var = tk.StringVar(self.root, value=self.source_file_txt_null)
+        self.file_source_file_txt_null = "Double click here or Drag & drop file ..."
+        self.file_source_var = tk.StringVar(root, value=self.file_source_file_txt_null)
         self.downloadlocation_entry = ttk.Label(
-            self.root,
-            textvariable=self.source_file_var,
+            tab,
+            textvariable=self.file_source_var,
         )
-        self.downloadlocation_entry.drop_target_register(DND_FILES)  # type:ignore
-        self.downloadlocation_entry.dnd_bind(  # type:ignore
+        self.downloadlocation_entry.grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady, columnspan=2)
+
+        tab.drop_target_register(DND_FILES)  # type:ignore
+        tab.dnd_bind(  # type:ignore
             "<<Drop>>",
             self.set_file_ondrop,
         )
         self.downloadlocation_entry.bind("<Double-Button-1>", self.set_file_dialogue)
-        self.downloadlocation_entry.grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady, columnspan=2)
 
-        ttk.Separator(self.root, orient="horizontal").grid(row=1, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        ttk.Separator(tab, orient="horizontal").grid(row=6, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
 
+        ttk.Label(
+            tab,
+            text="Additional settings",
+        ).grid(row=7, column=0, sticky="ew", padx=self.padx, pady=self.pady)
+
+        self.autonormalize_var = tk.BooleanVar(tab, True)
+        self.autonormalize_btn = ttk.Checkbutton(
+            tab,
+            text="Automatically normalize audio to -1.0 dB",
+            variable=self.autonormalize_var,
+        )
+        self.autonormalize_btn.grid(row=7, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
+
+        ttk.Separator(tab, orient="horizontal").grid(row=8, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        self.process_button = ttk.Button(
+            tab,
+            text="Process",
+            command=self.process,
+        )
+        self.process_button.grid(row=9, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+
+        return tab
+
+    def _tab_crop(self, root: TkinterDnD.Tk | ttk.Notebook) -> ttk.Frame:
+        tab = ttk.Frame(root)
         # Left top pixel
         ttk.Label(
-            self.root,
+            tab,
             text="Top left corner (X / Y)",
         ).grid(row=2, column=0, sticky="w", padx=self.padx, pady=self.pady)
-        self.left_top_x = tk.IntVar(self.root)
-        self.left_top_y = tk.IntVar(self.root)
+        self.left_top_x = tk.IntVar(tab)
+        self.left_top_y = tk.IntVar(tab)
         ttk.Spinbox(
-            self.root,
+            tab,
             textvariable=self.left_top_x,
             from_=0,
             to=5000,
         ).grid(row=2, column=1, sticky="ew", padx=self.padx, pady=self.pady)
         ttk.Spinbox(
-            self.root,
+            tab,
             textvariable=self.left_top_y,
             from_=0,
             to=5000,
@@ -214,31 +254,34 @@ class GUI:
 
         # Box Dimensions
         ttk.Label(
-            self.root,
+            tab,
             text="Box width (X / Y)",
         ).grid(row=3, column=0, sticky="w", padx=self.padx, pady=self.pady)
-        self.width_x = tk.IntVar(self.root)
-        self.height_y = tk.IntVar(self.root)
+        self.width_x = tk.IntVar(tab)
+        self.height_y = tk.IntVar(tab)
         ttk.Spinbox(
-            self.root,
+            tab,
             textvariable=self.width_x,
             from_=0,
             to=5000,
         ).grid(row=3, column=1, sticky="ew", padx=self.padx, pady=self.pady)
         ttk.Spinbox(
-            self.root,
+            tab,
             textvariable=self.height_y,
             from_=0,
             to=5000,
         ).grid(row=3, column=2, sticky="ew", padx=self.padx, pady=self.pady)
 
-        ttk.Separator(self.root, orient="horizontal").grid(row=4, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        return tab
+
+    def _tab_trim(self, root: TkinterDnD.Tk | ttk.Notebook) -> ttk.Frame:
+        tab = ttk.Frame(root)
         ttk.Label(
-            self.root,
+            tab,
             text="Timestamps Start / End (HH:MM:SS.MS)",
         ).grid(row=5, column=0, sticky="ew", padx=self.padx, pady=self.pady)
 
-        self.timestamp_frame = ttk.Frame(self.root)
+        self.timestamp_frame = ttk.Frame(tab)
         self.timestamp_frame.grid(row=5, column=1, sticky="ew", padx=self.padx, pady=self.pady, columnspan=2)
         self.hh_start = ttk.Spinbox(self.timestamp_frame, from_=0, to=99, width=3, format="%02.0f")
         self.hh_start.pack(side="left", fill="x", expand=True)
@@ -265,28 +308,7 @@ class GUI:
         self.ms_end = ttk.Spinbox(self.timestamp_frame, from_=0, to=999, width=4)
         self.ms_end.pack(side="left", fill="x", expand=True)
 
-        ttk.Separator(self.root, orient="horizontal").grid(row=6, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
-
-        ttk.Label(
-            self.root,
-            text="Additional settings",
-        ).grid(row=7, column=0, sticky="ew", padx=self.padx, pady=self.pady)
-
-        self.autonormalize_var = tk.BooleanVar(self.root, True)
-        self.autonormalize_btn = ttk.Checkbutton(
-            self.root,
-            text="Automatically normalize audio to -1.0 dB",
-            variable=self.autonormalize_var,
-        )
-        self.autonormalize_btn.grid(row=7, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
-
-        ttk.Separator(self.root, orient="horizontal").grid(row=8, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
-        self.process_button = ttk.Button(
-            self.root,
-            text="Process",
-            command=self.process,
-        )
-        self.process_button.grid(row=9, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        return tab
 
     def set_file_dialogue(self, _: Any) -> None:
         path = filedialog.askopenfilename()
@@ -301,7 +323,7 @@ class GUI:
     def set_file(self, path: str) -> None:
         v = get_video_info(path)
         self.max_volume = v.max_volume
-        self.source_file_var.set(path)
+        self.file_source_var.set(path)
 
         self.width_x.set(v.width)
         self.height_y.set(v.height)
@@ -385,7 +407,7 @@ class GUI:
         cmd = [
             "ffmpeg",
             "-i",
-            self.source_file_var.get(),
+            self.file_source_var.get(),
             "-y",  # overwrite always
         ]
 
@@ -425,7 +447,7 @@ class GUI:
             cmd.append("copy")
 
         # output filename
-        cmd.append(".".join(self.source_file_var.get().split(".")[0:-1]) + "-cropped." + self.source_file_var.get().split(".")[-1])
+        cmd.append(".".join(self.file_source_var.get().split(".")[0:-1]) + "-cropped." + self.file_source_var.get().split(".")[-1])
 
         print(" ".join(cmd))
         if sys.platform == "win32":
