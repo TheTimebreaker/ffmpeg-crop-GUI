@@ -2,6 +2,7 @@ import datetime
 import json
 import logging
 import re
+import shlex
 import subprocess
 import sys
 import tkinter as tk
@@ -10,6 +11,13 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Any, Final, Literal, overload
 
 from tkinterdnd2 import DND_FILES, TkinterDnD
+
+
+def printable_command(cmd: list[str]) -> str:
+    if sys.platform == "win32":
+        return subprocess.list2cmdline(cmd)
+    else:
+        return shlex.join(cmd)
 
 
 class Timestamp:
@@ -199,6 +207,10 @@ class GUI:
         )
         self.codec_settings: dict[str, dict] = {  # type:ignore
             "general": {
+                "file": {
+                    "default": "Double click here or Drag & drop file ...",
+                    "var": tk.StringVar(root, value="Double click here or Drag & drop file ..."),
+                },
                 "force_reencoding_video": {
                     "default": False,
                     "var": tk.BooleanVar(self.root, False),
@@ -425,11 +437,9 @@ class GUI:
         )
         self.file_source_label.grid(row=0, column=0, sticky="ew", padx=self.padx, pady=self.pady)
 
-        self.file_source_file_txt_null = "Double click here or Drag & drop file ..."
-        self.file_source_var = tk.StringVar(root, value=self.file_source_file_txt_null)
         self.downloadlocation_entry = ttk.Label(
             tab,
-            textvariable=self.file_source_var,
+            textvariable=self.codec_settings["general"]["file"]["var"],
         )
         self.downloadlocation_entry.grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady)
 
@@ -619,7 +629,7 @@ class GUI:
     def set_file(self, path: str) -> None:
         v = get_video_info(path)
         self.max_volume = v.max_volume
-        self.file_source_var.set(path)
+        self.codec_settings["general"]["file"]["var"].set(path)
 
         self.width_x.set(v.width)
         self.height_y.set(v.height)
@@ -751,6 +761,11 @@ class GUI:
         raise NotImplementedError("Encoder %s not implemented yet", selected_encoder)
 
     def process(self) -> None:
+        file: str = self.codec_settings["general"]["file"]["var"].get()
+        if not file or file == self.codec_settings["general"]["file"]["default"]:
+            messagebox.showerror("No file selected", message="You haven't selected a file to convert.")
+            return
+
         timestamps = self.get_timestamps()
         if timestamps is False:
             return
@@ -766,7 +781,7 @@ class GUI:
         cmd = [
             "ffmpeg",
             "-i",
-            self.file_source_var.get(),
+            file,
             "-y",  # overwrite always
         ]
 
@@ -809,9 +824,9 @@ class GUI:
             cmd.append("copy")
 
         # output filename
-        cmd.append(".".join(self.file_source_var.get().split(".")[0:-1]) + "-cropped." + self.file_source_var.get().split(".")[-1])
+        cmd.append(".".join(file.split(".")[0:-1]) + "-cropped." + file.split(".")[-1])
 
-        print(" ".join(cmd))
+        print(printable_command(cmd))
         if sys.platform == "win32":
             subprocess.run(cmd, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
         else:
