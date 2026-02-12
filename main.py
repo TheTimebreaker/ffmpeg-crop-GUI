@@ -207,6 +207,14 @@ class GUI:
                     "default": "libx264",
                     "var": tk.StringVar(self.root, "libx264"),
                 },
+                "crop_enabled": {
+                    "default": True,
+                    "var": tk.BooleanVar(self.root, True),
+                },
+                "trim_enabled": {
+                    "default": True,
+                    "var": tk.BooleanVar(self.root, True),
+                },
             },
             "libx264": {
                 "crf": {
@@ -247,11 +255,8 @@ class GUI:
         self.tab_input = self._tab_inout(self.notebook)
         self.notebook.add(self.tab_input, text="Input / Output")
 
-        self.tab_crop = self._tab_crop(self.notebook)
-        self.notebook.add(self.tab_crop, text="Crop")
-
-        self.tab_trim = self._tab_trim(self.notebook)
-        self.notebook.add(self.tab_trim, text="Trim")
+        self.tab_crop = self._tab_crop_trim(self.notebook)
+        self.notebook.add(self.tab_crop, text="Crop / Trim")
 
     def _init_codec_frames(self) -> None:
         def _libx264() -> ttk.LabelFrame:
@@ -477,18 +482,31 @@ class GUI:
         self._init_codec_frames()
         self.update_codec_frames(None)
 
-        ttk.Separator(tab, orient="horizontal").grid(row=12, column=0, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
+        tab.grid_rowconfigure(12, weight=1)
+        ttk.Separator(tab, orient="horizontal").grid(row=13, column=0, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
         self.process_button = ttk.Button(
             tab,
             text="Process",
             command=self.process,
         )
-        self.process_button.grid(row=12, column=0, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
+        self.process_button.grid(row=14, column=0, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
 
         return tab
 
-    def _tab_crop(self, root: TkinterDnD.Tk | ttk.Notebook) -> ttk.Frame:
+    def _tab_crop_trim(self, root: TkinterDnD.Tk | ttk.Notebook) -> ttk.Frame:
         tab = ttk.Frame(root)
+        tab.columnconfigure(0, weight=0)
+        tab.columnconfigure(1, weight=1)
+        tab.columnconfigure(2, weight=1)
+
+        crop_enabled = ttk.Checkbutton(tab, variable=self.codec_settings["general"]["crop_enabled"]["var"], text="Enable Crop")
+        crop_enabled.grid(row=0, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        ToolTip(
+            crop_enabled,
+            text="Allows the encoder to CROP the video with the settings specified here."
+            "\nThe system is smart and will only actually crop if these values were changed from the original values.",
+        )
+
         # Left top pixel
         ttk.Label(
             tab,
@@ -500,13 +518,13 @@ class GUI:
             tab,
             textvariable=self.left_top_x,
             from_=0,
-            to=5000,
+            to=50000,
         ).grid(row=2, column=1, sticky="ew", padx=self.padx, pady=self.pady)
         ttk.Spinbox(
             tab,
             textvariable=self.left_top_y,
             from_=0,
-            to=5000,
+            to=50000,
         ).grid(row=2, column=2, sticky="ew", padx=self.padx, pady=self.pady)
 
         # Box Dimensions
@@ -520,50 +538,71 @@ class GUI:
             tab,
             textvariable=self.width_x,
             from_=0,
-            to=5000,
+            to=50000,
         ).grid(row=3, column=1, sticky="ew", padx=self.padx, pady=self.pady)
         ttk.Spinbox(
             tab,
             textvariable=self.height_y,
             from_=0,
-            to=5000,
+            to=50000,
         ).grid(row=3, column=2, sticky="ew", padx=self.padx, pady=self.pady)
 
-        return tab
+        ttk.Separator(tab, orient="horizontal").grid(row=4, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
 
-    def _tab_trim(self, root: TkinterDnD.Tk | ttk.Notebook) -> ttk.Frame:
-        tab = ttk.Frame(root)
+        # Trim
+        trim_enabled = ttk.Checkbutton(tab, variable=self.codec_settings["general"]["trim_enabled"]["var"], text="Enable Trim")
+        trim_enabled.grid(row=5, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        ToolTip(
+            trim_enabled,
+            text="Allows the encoder to TRIM the video with the settings specified here."
+            "\nThe system is smart and will only actually crop if these values were changed from the original values.",
+        )
+
         ttk.Label(
             tab,
-            text="Timestamps Start / End (HH:MM:SS.MS)",
-        ).grid(row=5, column=0, sticky="ew", padx=self.padx, pady=self.pady)
-
-        self.timestamp_frame = ttk.Frame(tab)
-        self.timestamp_frame.grid(row=5, column=1, sticky="ew", padx=self.padx, pady=self.pady, columnspan=2)
-        self.hh_start = ttk.Spinbox(self.timestamp_frame, from_=0, to=99, width=3, format="%02.0f")
+            text="Timestamp Start (HH:MM:SS.MS)",
+        ).grid(row=6, column=0, sticky="w", padx=self.padx, pady=self.pady)
+        self.timestamp_start_frame = ttk.Frame(tab)
+        self.timestamp_start_frame.grid(row=6, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
+        self.hh_start = ttk.Spinbox(self.timestamp_start_frame, from_=0, to=99, width=3, format="%02.0f")
         self.hh_start.pack(side="left", fill="x", expand=True)
-        ttk.Label(self.timestamp_frame, text=" : ").pack(side="left")
-        self.mm_start = ttk.Spinbox(self.timestamp_frame, from_=0, to=59, width=3, format="%02.0f")
+        ttk.Label(self.timestamp_start_frame, text=" : ").pack(side="left")
+        self.mm_start = ttk.Spinbox(self.timestamp_start_frame, from_=0, to=59, width=3, format="%02.0f")
         self.mm_start.pack(side="left", fill="x", expand=True)
-        ttk.Label(self.timestamp_frame, text=" : ").pack(side="left")
-        self.ss_start = ttk.Spinbox(self.timestamp_frame, from_=0, to=59, width=3, format="%02.0f")
+        ttk.Label(self.timestamp_start_frame, text=" : ").pack(side="left")
+        self.ss_start = ttk.Spinbox(self.timestamp_start_frame, from_=0, to=59, width=3, format="%02.0f")
         self.ss_start.pack(side="left", fill="x", expand=True)
-        ttk.Label(self.timestamp_frame, text=" . ").pack(side="left")
-        self.ms_start = ttk.Spinbox(self.timestamp_frame, from_=0, to=999, width=4)
+        ttk.Label(self.timestamp_start_frame, text=" . ").pack(side="left")
+        self.ms_start = ttk.Spinbox(self.timestamp_start_frame, from_=0, to=999, width=4)
         self.ms_start.pack(side="left", fill="x", expand=True)
-        ttk.Separator(self.timestamp_frame, orient="vertical").pack(side="left", expand=True, fill="y")
 
-        self.hh_end = ttk.Spinbox(self.timestamp_frame, from_=0, to=99, width=3, format="%02.0f")
+        # Timestamp End
+        ttk.Label(
+            tab,
+            text="Timestamp End (HH:MM:SS.MS)",
+        ).grid(row=7, column=0, sticky="w", padx=self.padx, pady=self.pady)
+        self.timestamp_end_frame = ttk.Frame(tab)
+        self.timestamp_end_frame.grid(row=7, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
+        self.hh_end = ttk.Spinbox(self.timestamp_end_frame, from_=0, to=99, width=3, format="%02.0f")
         self.hh_end.pack(side="left", fill="x", expand=True)
-        ttk.Label(self.timestamp_frame, text=" : ").pack(side="left")
-        self.mm_end = ttk.Spinbox(self.timestamp_frame, from_=0, to=59, width=3, format="%02.0f")
+        ttk.Label(self.timestamp_end_frame, text=" : ").pack(side="left")
+        self.mm_end = ttk.Spinbox(self.timestamp_end_frame, from_=0, to=59, width=3, format="%02.0f")
         self.mm_end.pack(side="left", fill="x", expand=True)
-        ttk.Label(self.timestamp_frame, text=" : ").pack(side="left")
-        self.ss_end = ttk.Spinbox(self.timestamp_frame, from_=0, to=59, width=3, format="%02.0f")
+        ttk.Label(self.timestamp_end_frame, text=" : ").pack(side="left")
+        self.ss_end = ttk.Spinbox(self.timestamp_end_frame, from_=0, to=59, width=3, format="%02.0f")
         self.ss_end.pack(side="left", fill="x", expand=True)
-        ttk.Label(self.timestamp_frame, text=" . ").pack(side="left")
-        self.ms_end = ttk.Spinbox(self.timestamp_frame, from_=0, to=999, width=4)
+        ttk.Label(self.timestamp_end_frame, text=" . ").pack(side="left")
+        self.ms_end = ttk.Spinbox(self.timestamp_end_frame, from_=0, to=999, width=4)
         self.ms_end.pack(side="left", fill="x", expand=True)
+
+        tab.grid_rowconfigure(8, weight=1)
+        ttk.Separator(tab, orient="horizontal").grid(row=9, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        self.process_button = ttk.Button(
+            tab,
+            text="Process",
+            command=self.process,
+        )
+        self.process_button.grid(row=10, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
 
         return tab
 
@@ -731,18 +770,19 @@ class GUI:
             "-y",  # overwrite always
         ]
 
-        # timestamp command
-        if timestamp_start and timestamp_start != self.original_start:
-            cmd.append("-ss")
-            cmd.append(str(timestamp_start))
-            video_copy = False
-        if timestamp_end and timestamp_end != self.original_end:
-            cmd.append("-to")
-            cmd.append(str(timestamp_end))
-            video_copy = False
+        # trim / timestamp command
+        if self.codec_settings["general"]["trim_enabled"]["var"].get():
+            if timestamp_start and timestamp_start != self.original_start:
+                cmd.append("-ss")
+                cmd.append(str(timestamp_start))
+                video_copy = False
+            if timestamp_end and timestamp_end != self.original_end:
+                cmd.append("-to")
+                cmd.append(str(timestamp_end))
+                video_copy = False
 
         # crop command
-        if (
+        if self.codec_settings["general"]["crop_enabled"]["var"].get() and (
             width != self.original_width
             or height != self.original_height
             or left_top_x != self.original_left_top_x
