@@ -7,7 +7,7 @@ import sys
 import tkinter as tk
 from dataclasses import dataclass
 from tkinter import filedialog, messagebox, ttk
-from typing import Any, Literal, overload
+from typing import Any, Final, Literal, overload
 
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
@@ -151,6 +151,37 @@ def get_video_info(path: str) -> VideoInfo:
     )
 
 
+class ToolTip:
+    def __init__(self, widget: tk.Widget, text: str) -> None:
+        self.widget = widget
+        self.text = text
+        self.tip_window: tk.Toplevel | None = None
+
+        widget.bind("<Enter>", self.show_tooltip)
+        widget.bind("<Leave>", self.hide_tooltip)
+
+    def show_tooltip(self, _event: Any = None) -> None:
+        if self.tip_window:
+            return
+
+        x = self.widget.winfo_rootx() + 20
+        y = self.widget.winfo_rooty() + 20
+
+        self.tip_window = tk.Toplevel(self.widget)
+        self.tip_window.wm_overrideredirect(True)  # removes window decorations
+        self.tip_window.wm_geometry(f"+{x}+{y}")
+
+        label = tk.Label(
+            self.tip_window, text=self.text, background="#ffffe0", relief="solid", borderwidth=1, padx=5, pady=3, justify="left", anchor="w"
+        )
+        label.pack()
+
+    def hide_tooltip(self, _event: Any = None) -> None:
+        if self.tip_window:
+            self.tip_window.destroy()
+            self.tip_window = None
+
+
 class GUI:
     padx = 5
     pady = 5
@@ -161,6 +192,37 @@ class GUI:
         self.root.title("FFmpeg Crop GUI")
         self.root.minsize(800, 0)
         self.root.resizable(True, False)
+
+        self.CODECS_VIDEO: Final = (  # pylint:disable=C0103
+            "libx264",
+            "libx265",
+        )
+        self.codec_settings: dict[str, dict] = {  # type:ignore
+            "general": {
+                "force_reencoding_video": {
+                    "default": False,
+                    "var": tk.BooleanVar(self.root, False),
+                },
+                "selected_encoder_video": {
+                    "default": "libx264",
+                    "var": tk.StringVar(self.root, "libx264"),
+                },
+            },
+            "libx264": {
+                "crf": {
+                    "default": 23,
+                    "var": tk.IntVar(self.root, value=23),
+                },
+                "preset": {
+                    "default": "medium",
+                    "var": tk.StringVar(self.root, value="medium"),
+                },
+                "tune": {
+                    "default": "DEFAULT",
+                    "var": tk.StringVar(self.root, value="DEFAULT"),
+                },
+            },
+        }
 
         self.label_width = 15
         self.max_volume: float = 0.0
@@ -177,12 +239,102 @@ class GUI:
         self.tab_trim = self._tab_trim(self.notebook)
         self.notebook.add(self.tab_trim, text="Trim")
 
+    def _init_codec_frames(self) -> None:
+        def _libx264() -> ttk.LabelFrame:
+            f = ttk.LabelFrame(self.codec_options_frame, text="libx264 options")
+            f.columnconfigure(0, weight=0)
+            f.columnconfigure(1, weight=1)
+
+            # CRF
+            crf = ttk.Label(f, text="CRF")
+            crf.grid(row=0, column=0, sticky="w", padx=self.padx, pady=self.pady)
+            ToolTip(
+                crf,
+                "\n".join(
+                    [
+                        "Constant Rate Factor",
+                        "Lower = less ccompression but larger filesize",
+                        "Higher = more compression but smaller filesize",
+                        "0: lossless for 8bit video and basically lossless for 10bit",
+                        "17-18: visually lossless (the output should look the same even though it is technically compressed lossy)",
+                        "23: Default value",
+                        "51: Worst possible quality",
+                    ]
+                ),
+            )
+            tk.Scale(f, from_=0, to=51, variable=self.codec_settings["libx264"]["crf"]["var"], showvalue=True, orient="horizontal").grid(
+                row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady
+            )
+
+            # Preset
+            preset = ttk.Label(f, text="Preset")
+            preset.grid(row=1, column=0, sticky="w", padx=self.padx, pady=self.pady)
+            ToolTip(
+                preset,
+                "\n".join(
+                    [
+                        "Determines the general speed of the process (sorted Fastest > Slowest)",
+                        "If you target a certain filesize or constant bitrate you will receive higher quality with slower presets.",
+                        "Default: medium",
+                        "Placebo is basically useless, since it gives miniscule returns for vastly longer encoding times",
+                    ]
+                ),
+            )
+            ttk.Combobox(
+                f,
+                textvariable=self.codec_settings["libx264"]["preset"]["var"],
+                values=["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"],
+                state="readonly",
+            ).grid(row=1, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+
+            # Tune
+            tune = ttk.Label(f, text="Tune")
+            tune.grid(row=2, column=0, sticky="w", padx=self.padx, pady=self.pady)
+            ToolTip(
+                tune,
+                "\n".join(
+                    [
+                        "Specifying a tune will make the encoder target certain types of content better.",
+                        "film: use for high quality movie content; lowers deblocking",
+                        "animation: good for cartoons; uses higher deblocking and more reference frames",
+                        "grain: preserves the grain structure in old, grainy film material",
+                        "stillimage: good for slideshow-like content",
+                        "fastdecode: allows faster decoding by disabling certain filters",
+                        "zerolatency: good for fast encoding and low-latency streaming",
+                        "<Source: Official documentation>",
+                    ]
+                ),
+            )
+            ttk.Combobox(
+                f,
+                textvariable=self.codec_settings["libx264"]["tune"]["var"],
+                values=["DEFAULT", "film", "animation", "grain", "stillimage", "fastdecode", "zerolatency"],
+                state="readonly",
+            ).grid(row=2, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+
+            return f
+
+        def _libx265() -> ttk.Frame:
+            f = ttk.Frame(self.codec_options_frame)
+            ttk.Label(f, text="libx265's the name :)").pack()
+            return f
+
+        self.codec_options_frames: dict[str, ttk.Frame | ttk.LabelFrame] = {
+            "libx264": _libx264(),
+            "libx265": _libx265(),
+        }
+
+    def update_codec_frames(self, _: Any) -> None:
+        for val in self.codec_options_frames.values():
+            val.forget()
+        selected_encoder = self.codec_settings["general"]["selected_encoder_video"]["var"].get()
+        self.codec_options_frames[selected_encoder].pack(expand=True, fill="both")
+
     def _tab_inout(self, root: TkinterDnD.Tk | ttk.Notebook) -> ttk.Frame:
         tab = ttk.Frame(root)
 
         tab.columnconfigure(0, weight=0)
         tab.columnconfigure(1, weight=1)
-        tab.columnconfigure(2, weight=1)
 
         self.file_source_label = ttk.Label(
             tab,
@@ -196,7 +348,7 @@ class GUI:
             tab,
             textvariable=self.file_source_var,
         )
-        self.downloadlocation_entry.grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady, columnspan=2)
+        self.downloadlocation_entry.grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady)
 
         tab.drop_target_register(DND_FILES)  # type:ignore
         tab.dnd_bind(  # type:ignore
@@ -205,7 +357,7 @@ class GUI:
         )
         self.downloadlocation_entry.bind("<Double-Button-1>", self.set_file_dialogue)
 
-        ttk.Separator(tab, orient="horizontal").grid(row=6, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        ttk.Separator(tab, orient="horizontal").grid(row=6, column=0, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
 
         ttk.Label(
             tab,
@@ -218,15 +370,42 @@ class GUI:
             text="Automatically normalize audio to -1.0 dB",
             variable=self.autonormalize_var,
         )
-        self.autonormalize_btn.grid(row=7, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
+        self.autonormalize_btn.grid(row=7, column=1, sticky="ew", padx=self.padx, pady=self.pady)
 
-        ttk.Separator(tab, orient="horizontal").grid(row=8, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        ttk.Separator(tab, orient="horizontal").grid(row=8, column=0, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
+        video_encoder_label = ttk.Label(tab, text="Video encoder\n(if needed)")
+        video_encoder_label.grid(row=9, column=0, sticky="ew", padx=self.padx, pady=self.pady)
+        ToolTip(
+            video_encoder_label,
+            "\n".join(
+                [
+                    "This tool will attempt to copy the video feed if possible and",
+                    "only reencode the video with settings selected here if needed.",
+                    "Settings that require reencoding include cropping and trimming.",
+                ]
+            ),
+        )
+        ttk.Checkbutton(tab, text="Force reencoding", variable=self.codec_settings["general"]["force_reencoding_video"]["var"]).grid(
+            row=9, column=1, padx=self.padx, pady=self.pady, sticky="ew"
+        )
+        encoder = ttk.Combobox(
+            tab, textvariable=self.codec_settings["general"]["selected_encoder_video"]["var"], values=self.CODECS_VIDEO, state="readonly"
+        )
+        encoder.grid(sticky="ew", row=10, column=1, padx=self.padx, pady=self.pady)
+        encoder.bind("<<ComboboxSelected>>", self.update_codec_frames)
+
+        self.codec_options_frame = ttk.Frame(tab)
+        self.codec_options_frame.grid(row=11, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+        self._init_codec_frames()
+        self.update_codec_frames(None)
+
+        ttk.Separator(tab, orient="horizontal").grid(row=12, column=0, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
         self.process_button = ttk.Button(
             tab,
             text="Process",
             command=self.process,
         )
-        self.process_button.grid(row=9, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        self.process_button.grid(row=12, column=0, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
 
         return tab
 
@@ -391,6 +570,43 @@ class GUI:
             messagebox.showerror("Invalid CROP values", "Your crop data is invalid! Remember to only put in NUMBERS.")
             return False
 
+    def get_encoder_args_video_libx264(self) -> list[str]:
+        args: list[str] = ["-c:v", "libx264"]
+
+        # crf
+        crf_default: int = self.codec_settings["libx264"]["crf"]["default"]
+        crf_selection: int = self.codec_settings["libx264"]["crf"]["var"].get()
+        if crf_default != crf_selection:
+            args.append("-crf")
+            args.append(str(crf_selection))
+
+        # preset
+        preset_default: str = self.codec_settings["libx264"]["preset"]["default"]
+        preset_selection: str = self.codec_settings["libx264"]["preset"]["var"].get()
+        if preset_default != preset_selection:
+            args.append("-preset")
+            args.append(preset_selection)
+
+        # tune
+        tune_default: str = self.codec_settings["libx264"]["tune"]["default"]
+        tune_selection: str = self.codec_settings["libx264"]["tune"]["var"].get()
+        if tune_default != tune_selection:
+            args.append("-tune")
+            args.append(tune_selection)
+
+        return args
+
+    def get_encoder_args_video(self) -> list[str]:
+        selected_encoder = self.codec_settings["general"]["selected_encoder_video"]["var"].get()
+        match selected_encoder:
+            case "libx264":
+                return self.get_encoder_args_video_libx264()
+            case "libx265":
+                raise NotImplementedError("libx265 not implemented yet")
+            case _:
+                raise NotImplementedError("Encoder %s not implemented yet", selected_encoder)
+        raise NotImplementedError("Encoder %s not implemented yet", selected_encoder)
+
     def process(self) -> None:
         timestamps = self.get_timestamps()
         if timestamps is False:
@@ -402,7 +618,7 @@ class GUI:
             return
         width, height, left_top_x, left_top_y = crops
 
-        video_copy = True
+        video_copy: bool = not self.codec_settings["general"]["force_reencoding_video"]["var"].get()
         audio_copy = True
         cmd = [
             "ffmpeg",
@@ -442,6 +658,8 @@ class GUI:
         if video_copy:
             cmd.append("-c:v")
             cmd.append("copy")
+        else:
+            cmd += self.get_encoder_args_video_libx264()
         if audio_copy:
             cmd.append("-c:a")
             cmd.append("copy")
