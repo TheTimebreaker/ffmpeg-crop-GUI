@@ -222,6 +222,20 @@ class GUI:
                     "var": tk.StringVar(self.root, value="DEFAULT"),
                 },
             },
+            "libx265": {
+                "crf": {
+                    "default": 28,
+                    "var": tk.IntVar(self.root, value=28),
+                },
+                "preset": {
+                    "default": "medium",
+                    "var": tk.StringVar(self.root, value="medium"),
+                },
+                "tune": {
+                    "default": "DEFAULT",
+                    "var": tk.StringVar(self.root, value="DEFAULT"),
+                },
+            },
         }
 
         self.label_width = 15
@@ -253,7 +267,7 @@ class GUI:
                 "\n".join(
                     [
                         "Constant Rate Factor",
-                        "Lower = less ccompression but larger filesize",
+                        "Lower = less compression but larger filesize",
                         "Higher = more compression but smaller filesize",
                         "0: lossless for 8bit video and basically lossless for 10bit",
                         "17-18: visually lossless (the output should look the same even though it is technically compressed lossy)",
@@ -314,9 +328,73 @@ class GUI:
 
             return f
 
-        def _libx265() -> ttk.Frame:
-            f = ttk.Frame(self.codec_options_frame)
-            ttk.Label(f, text="libx265's the name :)").pack()
+        def _libx265() -> ttk.LabelFrame:
+            f = ttk.LabelFrame(self.codec_options_frame, text="libx265 options")
+            f.columnconfigure(0, weight=0)
+            f.columnconfigure(1, weight=1)
+
+            # CRF
+            crf = ttk.Label(f, text="CRF")
+            crf.grid(row=0, column=0, sticky="w", padx=self.padx, pady=self.pady)
+            ToolTip(
+                crf,
+                "\n".join(
+                    [
+                        "Constant Rate Factor",
+                        "Lower = less compression but larger filesize",
+                        "Higher = more compression but smaller filesize",
+                        "28: Default. Visually equal to libx264's default (crf 23), but half the file size)",
+                        "51: Worst possible quality",
+                    ]
+                ),
+            )
+            tk.Scale(f, from_=0, to=51, variable=self.codec_settings["libx265"]["crf"]["var"], showvalue=True, orient="horizontal").grid(
+                row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady
+            )
+
+            # Preset
+            preset = ttk.Label(f, text="Preset")
+            preset.grid(row=1, column=0, sticky="w", padx=self.padx, pady=self.pady)
+            ToolTip(
+                preset,
+                "\n".join(
+                    [
+                        "Determines the general speed of the process (sorted Fastest > Slowest)",
+                        "If you target a certain filesize or constant bitrate you will receive higher quality with slower presets.",
+                        "Default: medium",
+                        "Placebo is basically useless, since it gives miniscule returns for vastly longer encoding times",
+                    ]
+                ),
+            )
+            ttk.Combobox(
+                f,
+                textvariable=self.codec_settings["libx265"]["preset"]["var"],
+                values=["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"],
+                state="readonly",
+            ).grid(row=1, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+
+            # Tune
+            tune = ttk.Label(f, text="Tune")
+            tune.grid(row=2, column=0, sticky="w", padx=self.padx, pady=self.pady)
+            ToolTip(
+                tune,
+                "\n".join(
+                    [
+                        "Specifying a tune will make the encoder target certain types of content better.",
+                        "grain: preserves the grain structure in old, grainy film material",
+                        "fastdecode: allows faster decoding by disabling certain filters",
+                        "zerolatency: good for fast encoding and low-latency streaming",
+                        "<Source: Official documentation>",
+                    ]
+                ),
+            )
+            ttk.Combobox(
+                f,
+                textvariable=self.codec_settings["libx265"]["tune"]["var"],
+                values=["DEFAULT", "grain", "fastdecode", "zerolatency"],
+                state="readonly",
+            ).grid(row=2, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+
             return f
 
         self.codec_options_frames: dict[str, ttk.Frame | ttk.LabelFrame] = {
@@ -596,13 +674,39 @@ class GUI:
 
         return args
 
+    def get_encoder_args_video_libx265(self) -> list[str]:
+        args: list[str] = ["-c:v", "libx265"]
+
+        # crf
+        crf_default: int = self.codec_settings["libx265"]["crf"]["default"]
+        crf_selection: int = self.codec_settings["libx265"]["crf"]["var"].get()
+        if crf_default != crf_selection:
+            args.append("-crf")
+            args.append(str(crf_selection))
+
+        # preset
+        preset_default: str = self.codec_settings["libx265"]["preset"]["default"]
+        preset_selection: str = self.codec_settings["libx265"]["preset"]["var"].get()
+        if preset_default != preset_selection:
+            args.append("-preset")
+            args.append(preset_selection)
+
+        # tune
+        tune_default: str = self.codec_settings["libx265"]["tune"]["default"]
+        tune_selection: str = self.codec_settings["libx265"]["tune"]["var"].get()
+        if tune_default != tune_selection:
+            args.append("-tune")
+            args.append(tune_selection)
+
+        return args
+
     def get_encoder_args_video(self) -> list[str]:
         selected_encoder = self.codec_settings["general"]["selected_encoder_video"]["var"].get()
         match selected_encoder:
             case "libx264":
                 return self.get_encoder_args_video_libx264()
             case "libx265":
-                raise NotImplementedError("libx265 not implemented yet")
+                return self.get_encoder_args_video_libx265()
             case _:
                 raise NotImplementedError("Encoder %s not implemented yet", selected_encoder)
         raise NotImplementedError("Encoder %s not implemented yet", selected_encoder)
@@ -659,7 +763,7 @@ class GUI:
             cmd.append("-c:v")
             cmd.append("copy")
         else:
-            cmd += self.get_encoder_args_video_libx264()
+            cmd += self.get_encoder_args_video()
         if audio_copy:
             cmd.append("-c:a")
             cmd.append("copy")
