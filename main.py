@@ -8,9 +8,11 @@ import sys
 import tkinter as tk
 from dataclasses import dataclass
 from tkinter import filedialog, messagebox, ttk
-from typing import Any, Final, Literal, overload
+from typing import Any, Final, Literal, cast, overload
 
 from tkinterdnd2 import DND_FILES, TkinterDnD
+
+import filters
 
 
 def printable_command(cmd: list[str]) -> str:
@@ -18,6 +20,10 @@ def printable_command(cmd: list[str]) -> str:
         return subprocess.list2cmdline(cmd)
     else:
         return shlex.join(cmd)
+
+
+def ffmpeg_drawtext_escape(text: str) -> str:
+    return text.replace("\\", "\\\\").replace(":", "\\:").replace("%", "%%").replace("'", "\\'")
 
 
 class Timestamp:
@@ -190,6 +196,268 @@ class ToolTip:
             self.tip_window = None
 
 
+class SearchableList:
+    def __init__(self, parent: tk.Tk, items: list[str]):
+        self.top = tk.Toplevel(parent)
+        self.top.title("Select your option")
+        self.top.grab_set()
+        self.top.protocol("WM_DELETE_WINDOW", self._on_cancel)
+
+        self.items = items
+        self.filtered_widgets: list[tuple[str, tk.Label]] = []
+
+        self.selection_tuple: tuple[str, tk.Label] | None = None
+        self.selection: str | None = None
+        self.normal_style = {"bg": "SystemButtonFace", "fg": "black"}
+        self.selected_style = {"bg": "#0a64ad", "fg": "white"}
+        self.hover_style = {"bg": "#e6f2ff"}
+
+        self._build_ui()
+        self._create_widgets()
+
+        self.top.wait_window()
+
+    def _build_ui(self) -> None:
+        # Search field
+        self.search_var = tk.StringVar()
+        self.search_var.trace_add("write", self._update_list)
+
+        search_entry = ttk.Entry(self.top, textvariable=self.search_var)
+        search_entry.pack(fill="x", padx=5, pady=5)
+
+        ttk.Separator(self.top, orient="horizontal").pack()
+        ttk.Button(self.top, text="Confirm", command=self._on_confirm).pack()
+
+        # Scrollable area
+        self.canvas = tk.Canvas(self.top, highlightthickness=0)
+        self.scrollbar = ttk.Scrollbar(self.top, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = ttk.Frame(self.canvas)
+
+        # update scrollregion when the contents change
+        self.scrollable_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.window_id = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+
+        # make the inner frame match the canvas width so widgets expand properly
+        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(self.window_id, width=e.width))
+
+        # enable mouse wheel scrolling (Windows/Mac/Linux)
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.canvas.bind_all("<Button-4>", self._on_mousewheel)
+        self.canvas.bind_all("<Button-5>", self._on_mousewheel)
+
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+    def _create_widgets(self) -> None:
+        for item in self.items:
+            label = tk.Label(self.scrollable_frame, text=item, anchor="nw")
+            label.bind("<Button-1>", lambda e, text=item, widget=label: self._on_item_click(text, widget))
+            label.bind("<Enter>", self.on_enter)
+            label.bind("<Leave>", self.on_leave)
+            self.filtered_widgets.append((item, label))
+        self._update_list()
+
+    def _on_mousewheel(self, event: Any) -> None:
+        # cross-platform mousewheel support
+        if event.num == 4 or event.delta > 0:
+            self.canvas.yview_scroll(-1, "units")
+        elif event.num == 5 or event.delta < 0:
+            self.canvas.yview_scroll(1, "units")
+
+    def _on_item_click(self, item: str, widget: tk.Label) -> None:
+        self.selection_tuple = (item, widget)
+        self._update_list()
+
+    def _on_confirm(self) -> None:
+        if self.selection_tuple:
+            self.selection = self.selection_tuple[0]
+        self.top.destroy()
+
+    def _on_cancel(self) -> None:
+        self.top.destroy()
+
+    def on_enter(self, event: tk.Event) -> None:
+        if not self.selection_tuple or event.widget != self.selection_tuple[1]:
+            event.widget.configure(**self.hover_style)
+
+    def on_leave(self, event: tk.Event) -> None:
+        if not self.selection_tuple or event.widget != self.selection_tuple[1]:
+            event.widget.configure(**self.normal_style)
+
+    def _update_list(self, *_args: Any) -> None:
+        query = self.search_var.get().lower()
+
+        self.filtered_widgets = sorted(self.filtered_widgets)
+        for text, widget in self.filtered_widgets:
+            widget.pack_forget()
+            if query in text.lower():
+                widget.pack(fill="x", anchor="w")
+                if self.selection_tuple == (text, widget):
+                    widget.config(**self.selected_style)
+                else:
+                    widget.config(**self.normal_style)
+
+
+class FFmpegArgsDialog:
+    def __init__(self, parent: tk.Tk, required_args: list[str] | None = None, optional_args: list[str] | None = None) -> None:
+        self.top = tk.Toplevel(parent)
+        self.top.title("Add FFmpeg Filter Arguments")
+        self.top.grab_set()
+        self.args: list[tuple[str, str]] = []
+
+        self.required_args = required_args or []
+        self.optional_args = optional_args or []
+        self.arg_options = self.required_args + self.optional_args
+        self.rows: list[tuple[tk.StringVar, tk.StringVar, int]] = []
+
+        # Frame for table
+        self.table_frame = tk.Frame(self.top)
+        self.table_frame.pack(padx=10, pady=10)
+
+        # Header
+        tk.Label(self.table_frame, text="Argument").grid(row=0, column=0, padx=5)
+        tk.Label(self.table_frame, text="Value").grid(row=0, column=1, padx=5)
+
+        # Add initial row
+        self.add_row()
+
+        # Buttons
+        btn_frame = tk.Frame(self.top)
+        btn_frame.pack(pady=10)
+        tk.Button(btn_frame, text="Add Row", command=self.add_row).pack(side="left", padx=5)
+        tk.Button(btn_frame, text="OK", command=self.on_ok).pack(side="left", padx=5)
+        tk.Button(btn_frame, text="Cancel", command=self.on_cancel).pack(side="left", padx=5)
+
+        self.top.wait_window()
+
+    def _format_combobox_values(self) -> list[str]:
+        """Format values with required args in bold (prefixed with ***)"""
+        formatted = [f"*** {arg} ***" for arg in self.required_args]
+        formatted.extend(self.optional_args)
+        return formatted
+
+    def _extract_arg_name(self, formatted_arg: str) -> str:
+        """Extract the actual argument name from formatted string"""
+        if formatted_arg.startswith("*** ") and formatted_arg.endswith(" ***"):
+            return formatted_arg[4:-4]
+        return formatted_arg
+
+    def _get_used_args(self) -> set[str]:
+        """Get the set of arguments currently used in rows"""
+        used = set()
+        for arg_var, _, _ in self.rows:
+            arg_str = arg_var.get()
+            if arg_str:
+                actual_arg = self._extract_arg_name(arg_str)
+                used.add(actual_arg)
+        return used
+
+    def _get_available_options(self) -> list[str]:
+        """Get formatted combobox options, excluding already-used arguments"""
+        used_args = self._get_used_args()
+        available_required = [f"*** {arg} ***" for arg in self.required_args if arg not in used_args]
+        available_optional = [arg for arg in self.optional_args if arg not in used_args]
+        return available_required + available_optional
+
+    def _on_arg_selection_changed(self, *args: any) -> None:
+        """Callback when an argument is selected, updates all comboboxes"""
+        self.refresh_table()
+
+    def _on_fontfile_selected(self, arg_var: tk.StringVar, value_var: tk.StringVar) -> None:
+        """Handle special case when 'fontfile' is selected"""
+        arg_str = arg_var.get()
+        actual_arg = self._extract_arg_name(arg_str) if arg_str else ""
+
+        if actual_arg == "fontfile":
+            if sys.platform == "win32":  # TODO HERE
+                initdir = r"C:\Windows\Fonts"
+            else:
+                pass  # TODO
+            file_path = filedialog.askopenfilename(
+                title="Select Font File",
+                initialdir=initdir,
+                filetypes=[("Font Files", "*.ttf *.otf *.pfm"), ("All Files", "*.*")],
+            )
+            if file_path:
+                value_var.set(file_path)
+
+    def add_row(self) -> None:
+        row_index = len(self.rows) + 1
+        arg_var = tk.StringVar()
+        value_var = tk.StringVar()
+
+        available_options = self._get_available_options()
+        arg_cb = ttk.Combobox(self.table_frame, values=available_options, textvariable=arg_var, width=20)
+        arg_cb.grid(row=row_index, column=0, padx=5, pady=2)
+        value_entry = tk.Entry(self.table_frame, textvariable=value_var, width=20)
+        value_entry.grid(row=row_index, column=1, padx=5, pady=2)
+        delete_btn = tk.Button(self.table_frame, text="Remove", command=lambda: self.remove_row(row_index))
+        delete_btn.grid(row=row_index, column=2, padx=5, pady=2)
+
+        # Add trace to update combobox options when this argument changes
+        arg_var.trace("w", self._on_arg_selection_changed)
+
+        # Add trace to handle fontfile special case
+        arg_var.trace("w", lambda *args: self._on_fontfile_selected(arg_var, value_var))
+
+        self.rows.append((arg_var, value_var, row_index))
+
+    def remove_row(self, row_index: int) -> None:
+        # Find and remove the row from self.rows
+        self.rows = [(arg, value, idx) for arg, value, idx in self.rows if idx != row_index]
+
+        # Remove widgets from grid
+        for widget in self.table_frame.grid_slaves(row=row_index):
+            widget.grid_forget()
+
+        # Re-layout remaining rows
+        self.refresh_table()
+
+    def refresh_table(self) -> None:
+        # Clear all rows except header
+        for widget in self.table_frame.grid_slaves():
+            if widget.grid_info()["row"] > 0:
+                widget.grid_forget()
+
+        # Re-grid all rows with available options (excluding used arguments)
+        available_options = self._get_available_options()
+        for idx, (arg_var, value_var, _) in enumerate(self.rows, start=1):
+            arg_cb = ttk.Combobox(self.table_frame, values=available_options, textvariable=arg_var, width=20)
+            arg_cb.grid(row=idx, column=0, padx=5, pady=2)
+            value_entry = tk.Entry(self.table_frame, textvariable=value_var, width=20)
+            value_entry.grid(row=idx, column=1, padx=5, pady=2)
+            delete_btn = tk.Button(self.table_frame, text="Remove", command=lambda i=idx: self.remove_row(i))
+            delete_btn.grid(row=idx, column=2, padx=5, pady=2)
+
+    def on_ok(self) -> None:
+        # Extract actual argument names and build args list
+        args_list = []
+        added_args = set()
+
+        for arg, value, _ in self.rows:
+            arg_str = arg.get()
+            if arg_str:
+                actual_arg = self._extract_arg_name(arg_str)
+                args_list.append((actual_arg, value.get()))
+                added_args.add(actual_arg)
+
+        # Check if all required arguments are present
+        missing_args = [arg for arg in self.required_args if arg not in added_args]
+
+        if missing_args:
+            missing_str = ", ".join(missing_args)
+            messagebox.showerror("Missing Required Arguments", f"The following required arguments are missing:\n\n{missing_str}")
+            return
+
+        self.args = args_list
+        self.top.destroy()
+
+    def on_cancel(self) -> None:
+        self.top.destroy()
+
+
 class GUI:
     padx = 5
     pady = 5
@@ -257,6 +525,7 @@ class GUI:
                 },
             },
         }
+        self.video_filter_args: dict[filters.FiltersLiteral, list[dict[str, str]]] = {}
 
         self.label_width = 15
         self.max_volume: float = 0.0
@@ -269,6 +538,9 @@ class GUI:
 
         self.tab_crop = self._tab_crop_trim(self.notebook)
         self.notebook.add(self.tab_crop, text="Crop / Trim")
+
+        self.tab_text = self._tab_addvideofilter(self.notebook)
+        self.notebook.add(self.tab_text, text="Add Text")
 
     def _init_codec_frames(self) -> None:
         def _libx264() -> ttk.LabelFrame:
@@ -616,6 +888,42 @@ class GUI:
 
         return tab
 
+    def _tab_addvideofilter(self, root: TkinterDnD.Tk | ttk.Notebook) -> ttk.Frame:
+        def addvideofilter_dialog() -> None:
+            selected_filter = cast(filters.FiltersLiteral, selected_filter_var.get())
+            selected_typeddict = filters.filtermap(selected_filter)
+            required = list(selected_typeddict.__required_keys__)  # type:ignore
+            optional = list(selected_typeddict.__optional_keys__)  # type:ignore
+
+            dialog = FFmpegArgsDialog(self.root, required_args=required, optional_args=optional)
+            if dialog.args:
+                if "drawtext" not in self.video_filter_args:
+                    self.video_filter_args["drawtext"] = []
+                self.video_filter_args["drawtext"].append(dict(dialog.args))
+            else:
+                raise TypeError("No arguments returned...")
+            filter_content_label.config(text=json.dumps(self.video_filter_args, indent=2))
+            print(self.video_filter_args)
+
+        tab = ttk.Frame(root)
+        tab.columnconfigure(0, weight=0)
+        tab.columnconfigure(1, weight=1)
+        tab.columnconfigure(2, weight=5)
+
+        ttk.Label(tab, text="Video filter").grid(row=0, column=0, padx=self.padx, pady=self.pady, sticky="w")
+        selected_filter_var = tk.StringVar(tab)
+        ttk.Combobox(tab, values=[*filters.SUPPORTED_FILTERS], textvariable=selected_filter_var).grid(
+            row=0, column=1, padx=self.padx, pady=self.pady, sticky="new"
+        )
+        ttk.Button(tab, text="Configure entry", command=addvideofilter_dialog).grid(
+            row=1, column=0, columnspan=2, padx=self.padx, pady=self.pady, sticky="new"
+        )
+
+        filter_content_label = ttk.Label(tab, text="")
+        filter_content_label.grid(row=0, column=2, rowspan=2, padx=self.padx, pady=self.pady, sticky="ew")
+
+        return tab
+
     def set_file_dialogue(self, _: Any) -> None:
         path = filedialog.askopenfilename()
         if path:
@@ -760,6 +1068,16 @@ class GUI:
                 raise NotImplementedError("Encoder %s not implemented yet", selected_encoder)
         raise NotImplementedError("Encoder %s not implemented yet", selected_encoder)
 
+    def get_video_filter_args(self) -> list[str]:
+        entry_strs = []
+        for filter, args in self.video_filter_args.items():
+            entry_args = []
+            for entry in args:
+                for arg_name, arg_val in entry.items():
+                    entry_args.append(f"{arg_name}='{ffmpeg_drawtext_escape(arg_val)}'")
+            entry_strs.append(f"{filter}={':'.join(entry_args)}")
+        return ["-vf", ",".join(entry_strs)]
+
     def process(self) -> None:
         file: str = self.codec_settings["general"]["file"]["var"].get()
         if not file or file == self.codec_settings["general"]["file"]["default"]:
@@ -812,6 +1130,11 @@ class GUI:
             cmd.append("-filter:a")
             cmd.append(f"volume={-1 * self.max_volume - 1}dB")
             audio_copy = False
+
+        # Video filters
+        if self.video_filter_args:
+            cmd += self.get_video_filter_args()
+            video_copy = False
 
         # COPYING CODECS
         if video_copy:
