@@ -1,8 +1,11 @@
 import datetime
 import json
 import logging
+import os
+import random
 import re
 import shlex
+import string
 import subprocess
 import sys
 import tkinter as tk
@@ -10,6 +13,7 @@ from dataclasses import dataclass
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Final, Literal, cast, overload
 
+from fontTools.ttLib import TTFont  # type:ignore
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
 import filters
@@ -24,6 +28,31 @@ def printable_command(cmd: list[str]) -> str:
 
 def ffmpeg_drawtext_escape(text: str) -> str:
     return text.replace("\\", "\\\\").replace(":", "\\:").replace("%", "%%").replace("'", "\\'")
+
+
+def get_font_family(font_path: str) -> str:
+    font_obj = TTFont(font_path)
+    # 'name' table contains family and other name records
+    for record in font_obj["name"].names:
+        # Name ID 1 is the font family
+        if record.nameID == 1:
+            # Decode depending on platform
+            try:
+                if b"\x00" in record.string:
+                    return str(record.string.decode("utf-16-be"))
+                else:
+                    return str(record.string.decode("utf-8"))
+            except UnicodeDecodeError:
+                return str(record.string.decode("latin-1"))
+    return "UnknownFamily"
+
+
+def create_fake_font(root: tk.Tk | tk.Toplevel, font_path: str, font_size: int = 12) -> str:
+    family = get_font_family(font_path)
+    fake_identity = "".join(random.choice(string.ascii_letters) for _ in range(8))
+    root.tk.call("font", "create", fake_identity, "-family", family, "-size", font_size)
+
+    return fake_identity
 
 
 class Timestamp:
@@ -196,14 +225,21 @@ class ToolTip:
             self.tip_window = None
 
 
-class SearchableList:
-    def __init__(self, parent: tk.Tk, items: list[str]):
+class SearchableFont:
+    def __init__(self, parent: tk.Tk | tk.Toplevel, fonts_dir: str | None = None) -> None:
         self.top = tk.Toplevel(parent)
+        self.top.transient(parent)
         self.top.title("Select your option")
         self.top.grab_set()
         self.top.protocol("WM_DELETE_WINDOW", self._on_cancel)
 
-        self.items = items
+        if fonts_dir is None:
+            if sys.platform == "win32":
+                fonts_dir = r"C:\Windows\Fonts"
+            else:
+                raise NotImplementedError("Font selection not implemented for other OS'")
+        self.fonts_dir = fonts_dir
+        self.items = [x for x in os.listdir(fonts_dir) if not x.endswith(".fon")]  # fon types currently unsupported
         self.filtered_widgets: list[tuple[str, tk.Label]] = []
 
         self.selection_tuple: tuple[str, tk.Label] | None = None
@@ -211,6 +247,7 @@ class SearchableList:
         self.normal_style = {"bg": "SystemButtonFace", "fg": "black"}
         self.selected_style = {"bg": "#0a64ad", "fg": "white"}
         self.hover_style = {"bg": "#e6f2ff"}
+        self.preview_font_size: int = 20
 
         self._build_ui()
         self._create_widgets()
@@ -225,35 +262,43 @@ class SearchableList:
         search_entry = ttk.Entry(self.top, textvariable=self.search_var)
         search_entry.pack(fill="x", padx=5, pady=5)
 
-        ttk.Separator(self.top, orient="horizontal").pack()
-        ttk.Button(self.top, text="Confirm", command=self._on_confirm).pack()
+        scroll_frame = ttk.Frame(self.top)
+        scroll_frame.pack(side="top", fill="both", expand=True)
 
         # Scrollable area
-        self.canvas = tk.Canvas(self.top, highlightthickness=0)
-        self.scrollbar = ttk.Scrollbar(self.top, orient="vertical", command=self.canvas.yview)
+        self.canvas = tk.Canvas(scroll_frame, highlightthickness=0)
+        self.scrollbar = ttk.Scrollbar(scroll_frame, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = ttk.Frame(self.canvas)
 
         # update scrollregion when the contents change
-        self.scrollable_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.scrollable_frame.bind("<Configure>", lambda _event: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.window_id = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-
-        # make the inner frame match the canvas width so widgets expand properly
         self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(self.window_id, width=e.width))
 
-        # enable mouse wheel scrolling (Windows/Mac/Linux)
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
-        self.canvas.bind_all("<Button-4>", self._on_mousewheel)
-        self.canvas.bind_all("<Button-5>", self._on_mousewheel)
+        # enable mouse wheel scrolling (Windows/Mac/Linux) - bind to WINDOW, not globally
+        self.top.bind("<MouseWheel>", self._on_mousewheel)
+        self.top.bind("<Button-4>", self._on_mousewheel)
+        self.top.bind("<Button-5>", self._on_mousewheel)
 
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
 
+        ttk.Separator(self.top, orient="horizontal").pack(expand=True, fill="x")
+
+        # font preview
+        preview_frame = ttk.Frame(self.top)
+        preview_frame.pack(fill="both", expand=True)
+        ttk.Label(preview_frame, text="Preview font:").pack(anchor="nw")
+        self.preview_font = ttk.Label(preview_frame, text="No font selected")
+        self.preview_font.pack(anchor="nw")
+        ttk.Button(self.top, text="Confirm", command=self._on_confirm).pack()
+
     def _create_widgets(self) -> None:
         for item in self.items:
             label = tk.Label(self.scrollable_frame, text=item, anchor="nw")
-            label.bind("<Button-1>", lambda e, text=item, widget=label: self._on_item_click(text, widget))
+            label.bind("<Button-1>", lambda _event, text=item, widget=label: self._on_item_click(text, widget))  # type:ignore
             label.bind("<Enter>", self.on_enter)
             label.bind("<Leave>", self.on_leave)
             self.filtered_widgets.append((item, label))
@@ -269,6 +314,7 @@ class SearchableList:
     def _on_item_click(self, item: str, widget: tk.Label) -> None:
         self.selection_tuple = (item, widget)
         self._update_list()
+        self._update_preview()
 
     def _on_confirm(self) -> None:
         if self.selection_tuple:
@@ -298,10 +344,21 @@ class SearchableList:
                     widget.config(**self.selected_style)
                 else:
                     widget.config(**self.normal_style)
+        self.canvas.yview_moveto(0)
+
+    # def fake_custom_font(self, filepath:str) -> None:
+
+    def _update_preview(self, *_args: Any) -> None:
+        if self.selection_tuple and self.selection_tuple[0]:
+            font_path = os.path.join(self.fonts_dir, self.selection_tuple[0])
+            fake_font = create_fake_font(self.top, font_path, self.preview_font_size)
+
+            self.preview_font.configure(font=fake_font, text="Sphinx of black quartz,\njudge my vow")
 
 
 class FFmpegArgsDialog:
     def __init__(self, parent: tk.Tk, required_args: list[str] | None = None, optional_args: list[str] | None = None) -> None:
+        self.parent = parent
         self.top = tk.Toplevel(parent)
         self.top.title("Add FFmpeg Filter Arguments")
         self.top.grab_set()
@@ -355,33 +412,22 @@ class FFmpegArgsDialog:
         return used
 
     def _get_available_options(self) -> list[str]:
-        """Get formatted combobox options, excluding already-used arguments"""
         used_args = self._get_used_args()
         available_required = [f"*** {arg} ***" for arg in self.required_args if arg not in used_args]
         available_optional = [arg for arg in self.optional_args if arg not in used_args]
         return available_required + available_optional
 
-    def _on_arg_selection_changed(self, *args: any) -> None:
-        """Callback when an argument is selected, updates all comboboxes"""
+    def _on_arg_selection_changed(self, *_args: Any) -> None:
         self.refresh_table()
 
-    def _on_fontfile_selected(self, arg_var: tk.StringVar, value_var: tk.StringVar) -> None:
-        """Handle special case when 'fontfile' is selected"""
+    def _fontfile_selected_check(self, arg_var: tk.StringVar, value_var: tk.StringVar) -> None:
         arg_str = arg_var.get()
         actual_arg = self._extract_arg_name(arg_str) if arg_str else ""
 
         if actual_arg == "fontfile":
-            if sys.platform == "win32":  # TODO HERE
-                initdir = r"C:\Windows\Fonts"
-            else:
-                pass  # TODO
-            file_path = filedialog.askopenfilename(
-                title="Select Font File",
-                initialdir=initdir,
-                filetypes=[("Font Files", "*.ttf *.otf *.pfm"), ("All Files", "*.*")],
-            )
-            if file_path:
-                value_var.set(file_path)
+            dialog = SearchableFont(self.top)
+            if dialog.selection:
+                value_var.set(os.path.join(dialog.fonts_dir, dialog.selection))
 
     def add_row(self) -> None:
         row_index = len(self.rows) + 1
@@ -397,10 +443,10 @@ class FFmpegArgsDialog:
         delete_btn.grid(row=row_index, column=2, padx=5, pady=2)
 
         # Add trace to update combobox options when this argument changes
-        arg_var.trace("w", self._on_arg_selection_changed)
+        arg_var.trace("w", self._on_arg_selection_changed)  # type:ignore
 
         # Add trace to handle fontfile special case
-        arg_var.trace("w", lambda *args: self._on_fontfile_selected(arg_var, value_var))
+        arg_var.trace("w", lambda *_args: self._fontfile_selected_check(arg_var, value_var))  # type:ignore
 
         self.rows.append((arg_var, value_var, row_index))
 
@@ -428,7 +474,7 @@ class FFmpegArgsDialog:
             arg_cb.grid(row=idx, column=0, padx=5, pady=2)
             value_entry = tk.Entry(self.table_frame, textvariable=value_var, width=20)
             value_entry.grid(row=idx, column=1, padx=5, pady=2)
-            delete_btn = tk.Button(self.table_frame, text="Remove", command=lambda i=idx: self.remove_row(i))
+            delete_btn = tk.Button(self.table_frame, text="Remove", command=lambda i=idx: self.remove_row(i))  # type:ignore
             delete_btn.grid(row=idx, column=2, padx=5, pady=2)
 
     def on_ok(self) -> None:
@@ -477,54 +523,55 @@ class GUI:
             "general": {
                 "file": {
                     "default": "Double click here or Drag & drop file ...",
-                    "var": tk.StringVar(root, value="Double click here or Drag & drop file ..."),
+                    "var": tk.StringVar(root),
                 },
                 "force_reencoding_video": {
                     "default": False,
-                    "var": tk.BooleanVar(self.root, False),
+                    "var": tk.BooleanVar(self.root),
                 },
                 "selected_encoder_video": {
                     "default": "libx264",
-                    "var": tk.StringVar(self.root, "libx264"),
+                    "var": tk.StringVar(self.root),
                 },
                 "crop_enabled": {
                     "default": True,
-                    "var": tk.BooleanVar(self.root, True),
+                    "var": tk.BooleanVar(self.root),
                 },
                 "trim_enabled": {
                     "default": True,
-                    "var": tk.BooleanVar(self.root, True),
+                    "var": tk.BooleanVar(self.root),
                 },
             },
             "libx264": {
                 "crf": {
                     "default": 23,
-                    "var": tk.IntVar(self.root, value=23),
+                    "var": tk.IntVar(self.root),
                 },
                 "preset": {
                     "default": "medium",
-                    "var": tk.StringVar(self.root, value="medium"),
+                    "var": tk.StringVar(self.root),
                 },
                 "tune": {
                     "default": "DEFAULT",
-                    "var": tk.StringVar(self.root, value="DEFAULT"),
+                    "var": tk.StringVar(self.root),
                 },
             },
             "libx265": {
                 "crf": {
                     "default": 28,
-                    "var": tk.IntVar(self.root, value=28),
+                    "var": tk.IntVar(self.root),
                 },
                 "preset": {
                     "default": "medium",
-                    "var": tk.StringVar(self.root, value="medium"),
+                    "var": tk.StringVar(self.root),
                 },
                 "tune": {
                     "default": "DEFAULT",
-                    "var": tk.StringVar(self.root, value="DEFAULT"),
+                    "var": tk.StringVar(self.root),
                 },
             },
         }
+        self.reset_settings_to_default()
         self.video_filter_args: dict[filters.FiltersLiteral, list[dict[str, str]]] = {}
 
         self.label_width = 15
@@ -540,7 +587,15 @@ class GUI:
         self.notebook.add(self.tab_crop, text="Crop / Trim")
 
         self.tab_text = self._tab_addvideofilter(self.notebook)
-        self.notebook.add(self.tab_text, text="Add Text")
+        self.notebook.add(self.tab_text, text="Video Filters")
+
+    def reset_settings_to_default(self) -> None:
+        for section in self.codec_settings.values():
+            for option in section.values():
+                var = option.get("var")
+                default = option.get("default")
+                if var is not None and default is not None:
+                    var.set(default)
 
     def _init_codec_frames(self) -> None:
         def _libx264() -> ttk.LabelFrame:
@@ -691,7 +746,7 @@ class GUI:
             "libx265": _libx265(),
         }
 
-    def update_codec_frames(self, _: Any) -> None:
+    def update_codec_frames(self, _: Any = None) -> None:
         for val in self.codec_options_frames.values():
             val.forget()
         selected_encoder = self.codec_settings["general"]["selected_encoder_video"]["var"].get()
@@ -902,8 +957,7 @@ class GUI:
                 self.video_filter_args["drawtext"].append(dict(dialog.args))
             else:
                 raise TypeError("No arguments returned...")
-            filter_content_label.config(text=json.dumps(self.video_filter_args, indent=2))
-            print(self.video_filter_args)
+            self.filter_content_label.config(text=json.dumps(self.video_filter_args, indent=2))
 
         tab = ttk.Frame(root)
         tab.columnconfigure(0, weight=0)
@@ -919,8 +973,17 @@ class GUI:
             row=1, column=0, columnspan=2, padx=self.padx, pady=self.pady, sticky="new"
         )
 
-        filter_content_label = ttk.Label(tab, text="")
-        filter_content_label.grid(row=0, column=2, rowspan=2, padx=self.padx, pady=self.pady, sticky="ew")
+        self.filter_content_label = ttk.Label(tab, text="")
+        self.filter_content_label.grid(row=0, column=2, rowspan=2, padx=self.padx, pady=self.pady, sticky="ew")
+
+        tab.grid_rowconfigure(1, weight=1)
+        ttk.Separator(tab, orient="horizontal").grid(row=2, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        self.process_button = ttk.Button(
+            tab,
+            text="Process",
+            command=self.process,
+        )
+        self.process_button.grid(row=3, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
 
         return tab
 
@@ -934,7 +997,16 @@ class GUI:
         if files:
             self.set_file(files[0])
 
+    def _reset_to_defaults(self) -> None:
+        self.reset_settings_to_default()
+        self.update_codec_frames()
+        self.video_filter_args = {}  # TODO work this into the settings dict
+        self.filter_content_label.config(text="")
+        # TODO: work crop/trim into settings dict
+
     def set_file(self, path: str) -> None:
+        self._reset_to_defaults()
+
         v = get_video_info(path)
         self.max_volume = v.max_volume
         self.codec_settings["general"]["file"]["var"].set(path)
