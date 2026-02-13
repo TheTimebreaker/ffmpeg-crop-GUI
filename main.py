@@ -447,7 +447,7 @@ class FFmpegArgsDialog:
 
     def add_row(self, arg_name: str | None = None, value: str | None = None) -> None:
         row_index = len(self.rows) + 1
-        formatted = self._format_arg(arg_name) if arg_name else ""  # type: ignore
+        formatted = self._format_arg(arg_name) if arg_name else ""
         arg_var = tk.StringVar(value=formatted)
         value_var = tk.StringVar(value=value or "")
 
@@ -960,64 +960,65 @@ class GUI:
 
         return tab
 
-    def _tab_addvideofilter(self, root: TkinterDnD.Tk | ttk.Notebook) -> ttk.Frame:
-        def addvideofilter_dialog(prefilled_args: dict[str, str] | None = None, replace_index: int | None = None) -> None:
-            selected_filter = cast(filters.FiltersLiteral, selected_filter_var.get())
-            selected_typeddict = filters.filtermap(selected_filter)
-            required = list(selected_typeddict.__required_keys__)  # type:ignore
-            optional = list(selected_typeddict.__optional_keys__)  # type:ignore
+    def update_videofilter_preview(self) -> None:
+        for child in self.videofilter_filters_frame.winfo_children():
+            child.destroy()
 
-            dialog = FFmpegArgsDialog(
-                self.root,
-                required_args=required,
-                optional_args=optional,
-                prefilled_args=prefilled_args,
-            )
-            if dialog.args:
-                if selected_filter not in self.video_filter_args:
-                    self.video_filter_args[selected_filter] = []
-                if replace_index is not None:
-                    self.video_filter_args[selected_filter][replace_index] = dict(dialog.args)
-                else:
-                    self.video_filter_args[selected_filter].append(dict(dialog.args))
+        row = 0
+        for filter, entries in self.video_filter_args.items():
+            print(filter, entries)
+            for entry in entries:
+                ttk.Label(self.videofilter_filters_frame, text=filter, justify="left").grid(
+                    row=row,
+                    column=0,
+                    sticky="ew",
+                    padx=self.padx,
+                    pady=self.pady,
+                )
+                ttk.Label(self.videofilter_filters_frame, text=str(entry), justify="left").grid(
+                    row=row,
+                    column=1,
+                    sticky="ew",
+                    padx=self.padx,
+                    pady=self.pady,
+                )
+                ttk.Button(
+                    self.videofilter_filters_frame,
+                    text="Edit",
+                    command=lambda f=filter, e=entry: self.editvideofilter_dialog(f, e),  # type:ignore
+                ).grid(row=row, column=2, sticky="ew", padx=self.padx, pady=self.pady)
+                row += 1
+
+    def addvideofilter_dialog(self, prefilled_args: dict[str, str] | None = None, replace_index: int | None = None) -> None:
+        selected_filter = cast(filters.FiltersLiteral, self.selected_videofilter_var.get())
+        selected_typeddict = filters.filtermap(selected_filter)
+        required = list(selected_typeddict.__required_keys__)  # type:ignore
+        optional = list(selected_typeddict.__optional_keys__)  # type:ignore
+
+        dialog = FFmpegArgsDialog(
+            self.root,
+            required_args=required,
+            optional_args=optional,
+            prefilled_args=prefilled_args,
+        )
+        if dialog.args:
+            if selected_filter not in self.video_filter_args:
+                self.video_filter_args[selected_filter] = []
+            if replace_index is not None:
+                self.video_filter_args[selected_filter][replace_index] = dict(dialog.args)
             else:
-                raise TypeError("No arguments returned...")
-            addvideofilter_preview()
+                self.video_filter_args[selected_filter].append(dict(dialog.args))
+        else:
+            raise TypeError("No arguments returned...")
+        self.update_videofilter_preview()
 
-        def addvideofilter_preview() -> None:
-            for child in self.videofilter_filters_frame.winfo_children():
-                child.destroy()
+    def editvideofilter_dialog(self, filter: filters.FiltersLiteral, args_to_edit: dict[str, str]) -> None:
+        for i, args_entry in enumerate(self.video_filter_args[filter]):
+            if args_entry == args_to_edit:
+                self.addvideofilter_dialog(args_to_edit, i)
+                return
 
-            row = 0
-            for filter, entries in self.video_filter_args.items():
-                print(filter, entries)
-                for entry in entries:
-                    ttk.Label(self.videofilter_filters_frame, text=filter, justify="left").grid(
-                        row=row,
-                        column=0,
-                        sticky="ew",
-                        padx=self.padx,
-                        pady=self.pady,
-                    )
-                    ttk.Label(self.videofilter_filters_frame, text=str(entry), justify="left").grid(
-                        row=row,
-                        column=1,
-                        sticky="ew",
-                        padx=self.padx,
-                        pady=self.pady,
-                    )
-                    ttk.Button(
-                        self.videofilter_filters_frame,
-                        text="Edit",
-                        command=lambda f=filter, e=entry: editvideofilter_dialog(f, e),  # type:ignore
-                    ).grid(row=row, column=2, sticky="ew", padx=self.padx, pady=self.pady)
-                    row += 1
-
-        def editvideofilter_dialog(filter: filters.FiltersLiteral, args_to_edit: dict[str, str]) -> None:
-            for i, args_entry in enumerate(self.video_filter_args[filter]):
-                if args_entry == args_to_edit:
-                    addvideofilter_dialog(args_to_edit, i)
-                    return
+    def _tab_addvideofilter(self, root: TkinterDnD.Tk | ttk.Notebook) -> ttk.Frame:
 
         tab = ttk.Frame(root)
         tab.columnconfigure(0, weight=0)
@@ -1025,11 +1026,11 @@ class GUI:
         tab.columnconfigure(2, weight=5)
 
         ttk.Label(tab, text="Video filter").grid(row=0, column=0, padx=self.padx, pady=self.pady, sticky="w")
-        selected_filter_var = tk.StringVar(tab)
-        ttk.Combobox(tab, values=[*filters.SUPPORTED_FILTERS], textvariable=selected_filter_var).grid(
+        self.selected_videofilter_var = tk.StringVar(tab)  # TODO add to central dict
+        ttk.Combobox(tab, values=[*filters.SUPPORTED_FILTERS], textvariable=self.selected_videofilter_var).grid(
             row=0, column=1, padx=self.padx, pady=self.pady, sticky="new"
         )
-        ttk.Button(tab, text="Add selected filter", command=addvideofilter_dialog).grid(
+        ttk.Button(tab, text="Add selected filter", command=self.addvideofilter_dialog).grid(
             row=1, column=0, columnspan=2, padx=self.padx, pady=self.pady, sticky="new"
         )
 
@@ -1064,7 +1065,7 @@ class GUI:
         self.reset_settings_to_default()
         self.update_codec_frames()
         self.video_filter_args = {}  # TODO work this into the settings dict
-        self.videofilter_filters_frame.config(text="")
+        self.update_videofilter_preview()
         # TODO: work crop/trim into settings dict
 
     def set_file(self, path: str) -> None:
