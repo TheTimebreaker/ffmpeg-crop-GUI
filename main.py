@@ -1206,12 +1206,13 @@ class GUI:
 
     def get_video_filter_args(self) -> list[str]:
         entry_strs = []
-        for filter, args in self.video_filter_args.items():
-            entry_args = []
-            for entry in args:
-                for arg_name, arg_val in entry.items():
+        for filter, all_calls_of_filter in self.video_filter_args.items():
+            for individual_call in all_calls_of_filter:
+                entry_args = []
+                for arg_name, arg_val in individual_call.items():
                     entry_args.append(f"{arg_name}='{ffmpeg_drawtext_escape(arg_val)}'")
-            entry_strs.append(f"{filter}={':'.join(entry_args)}")
+                entry_strs.append(f"{filter}={':'.join(entry_args)}")
+        print(entry_strs)
         return entry_strs
 
     def process(self) -> None:
