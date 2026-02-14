@@ -27,10 +27,6 @@ class GuiVars:
                     "default": "libx264",
                     "var": tk.StringVar(root),
                 },
-                "trim_enabled": {
-                    "default": True,
-                    "var": tk.BooleanVar(root),
-                },
             },
             "crop": {
                 "crop_enabled": {
@@ -70,7 +66,60 @@ class GuiVars:
                     "var": tk.IntVar(root),
                 },
             },
-            "trim": {},
+            "trim": {
+                "trim_enabled": {
+                    "default": True,
+                    "var": tk.BooleanVar(root),
+                },
+                "hh_start": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "mm_start": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "ss_start": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "ms_start": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "hh_end": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "mm_end": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "ss_end": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "ms_end": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "original_hh_end": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "original_mm_end": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "original_ss_end": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "original_ms_end": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+            },
             "libx264": {
                 "crf": {
                     "default": 23,

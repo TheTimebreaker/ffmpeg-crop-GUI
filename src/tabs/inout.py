@@ -289,7 +289,7 @@ class InOut(ttk.Frame):
         if files:
             self.set_file(files[0])
 
-    def set_file(self, path: str) -> None:  # TODO: incorporate ins ettings
+    def set_file(self, path: str) -> None:
         self.parent._reset_to_defaults()
 
         v = media_info.get_video_info(path)
@@ -305,13 +305,16 @@ class InOut(ttk.Frame):
         self.gui_vars.settings["crop"]["original_left_top_x"]["var"].set(0)
         self.gui_vars.settings["crop"]["original_left_top_y"]["var"].set(0)
 
-        self.parent.hh_start.set(0)
-        self.parent.mm_start.set(0)
-        self.parent.ss_start.set(0)
-        self.parent.ms_start.set(0)
-        self.parent.hh_end.set(v.duration.hh)
-        self.parent.mm_end.set(v.duration.mm)
-        self.parent.ss_end.set(v.duration.ss)
-        self.parent.ms_end.set(v.duration.ms)
-        self.parent.original_start = media_info.Timestamp(0, 0, 0, 0)
-        self.parent.original_end = media_info.Timestamp(v.duration.hh, v.duration.mm, v.duration.ss, v.duration.ms)
+        self.gui_vars.settings["trim"]["hh_start"]["var"].set(0)
+        self.gui_vars.settings["trim"]["mm_start"]["var"].set(0)
+        self.gui_vars.settings["trim"]["ss_start"]["var"].set(0)
+        self.gui_vars.settings["trim"]["ms_start"]["var"].set(0)
+        self.gui_vars.settings["trim"]["hh_end"]["var"].set(v.duration.hh)
+        self.gui_vars.settings["trim"]["mm_end"]["var"].set(v.duration.mm)
+        self.gui_vars.settings["trim"]["ss_end"]["var"].set(v.duration.ss)
+        self.gui_vars.settings["trim"]["ms_end"]["var"].set(v.duration.ms)
+
+        self.gui_vars.settings["trim"]["original_hh_end"]["var"].set(v.duration.hh)
+        self.gui_vars.settings["trim"]["original_mm_end"]["var"].set(v.duration.mm)
+        self.gui_vars.settings["trim"]["original_ss_end"]["var"].set(v.duration.ss)
+        self.gui_vars.settings["trim"]["original_ms_end"]["var"].set(v.duration.ms)

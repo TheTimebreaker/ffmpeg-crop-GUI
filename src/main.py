@@ -444,7 +444,7 @@ class GUI:
         ttk.Separator(tab, orient="horizontal").grid(row=4, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
 
         # Trim
-        trim_enabled = ttk.Checkbutton(tab, variable=self.gui_vars.settings["general"]["trim_enabled"]["var"], text="Enable Trim")
+        trim_enabled = ttk.Checkbutton(tab, variable=self.gui_vars.settings["trim"]["trim_enabled"]["var"], text="Enable Trim")
         trim_enabled.grid(row=5, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
         common.ToolTip(
             trim_enabled,
@@ -456,38 +456,46 @@ class GUI:
             tab,
             text="Timestamp Start (HH:MM:SS.MS)",
         ).grid(row=6, column=0, sticky="w", padx=self.padx, pady=self.pady)
-        self.timestamp_start_frame = ttk.Frame(tab)
-        self.timestamp_start_frame.grid(row=6, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
-        self.hh_start = ttk.Spinbox(self.timestamp_start_frame, from_=0, to=99, width=3, format="%02.0f")
-        self.hh_start.pack(side="left", fill="x", expand=True)
-        ttk.Label(self.timestamp_start_frame, text=" : ").pack(side="left")
-        self.mm_start = ttk.Spinbox(self.timestamp_start_frame, from_=0, to=59, width=3, format="%02.0f")
-        self.mm_start.pack(side="left", fill="x", expand=True)
-        ttk.Label(self.timestamp_start_frame, text=" : ").pack(side="left")
-        self.ss_start = ttk.Spinbox(self.timestamp_start_frame, from_=0, to=59, width=3, format="%02.0f")
-        self.ss_start.pack(side="left", fill="x", expand=True)
-        ttk.Label(self.timestamp_start_frame, text=" . ").pack(side="left")
-        self.ms_start = ttk.Spinbox(self.timestamp_start_frame, from_=0, to=999, width=4)
-        self.ms_start.pack(side="left", fill="x", expand=True)
+        timestamp_start_frame = ttk.Frame(tab)
+        timestamp_start_frame.grid(row=6, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
+        ttk.Spinbox(
+            timestamp_start_frame, textvariable=self.gui_vars.settings["trim"]["hh_start"]["var"], from_=0, to=99, width=3, format="%02.0f"
+        ).pack(side="left", fill="x", expand=True)
+        ttk.Label(timestamp_start_frame, text=" : ").pack(side="left")
+        ttk.Spinbox(
+            timestamp_start_frame, textvariable=self.gui_vars.settings["trim"]["mm_start"]["var"], from_=0, to=59, width=3, format="%02.0f"
+        ).pack(side="left", fill="x", expand=True)
+        ttk.Label(timestamp_start_frame, text=" : ").pack(side="left")
+        ttk.Spinbox(
+            timestamp_start_frame, textvariable=self.gui_vars.settings["trim"]["ss_start"]["var"], from_=0, to=59, width=3, format="%02.0f"
+        ).pack(side="left", fill="x", expand=True)
+        ttk.Label(timestamp_start_frame, text=" . ").pack(side="left")
+        ttk.Spinbox(timestamp_start_frame, textvariable=self.gui_vars.settings["trim"]["ms_start"]["var"], from_=0, to=999, width=4).pack(
+            side="left", fill="x", expand=True
+        )
 
         # Timestamp End
         ttk.Label(
             tab,
             text="Timestamp End (HH:MM:SS.MS)",
         ).grid(row=7, column=0, sticky="w", padx=self.padx, pady=self.pady)
-        self.timestamp_end_frame = ttk.Frame(tab)
-        self.timestamp_end_frame.grid(row=7, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
-        self.hh_end = ttk.Spinbox(self.timestamp_end_frame, from_=0, to=99, width=3, format="%02.0f")
-        self.hh_end.pack(side="left", fill="x", expand=True)
-        ttk.Label(self.timestamp_end_frame, text=" : ").pack(side="left")
-        self.mm_end = ttk.Spinbox(self.timestamp_end_frame, from_=0, to=59, width=3, format="%02.0f")
-        self.mm_end.pack(side="left", fill="x", expand=True)
-        ttk.Label(self.timestamp_end_frame, text=" : ").pack(side="left")
-        self.ss_end = ttk.Spinbox(self.timestamp_end_frame, from_=0, to=59, width=3, format="%02.0f")
-        self.ss_end.pack(side="left", fill="x", expand=True)
-        ttk.Label(self.timestamp_end_frame, text=" . ").pack(side="left")
-        self.ms_end = ttk.Spinbox(self.timestamp_end_frame, from_=0, to=999, width=4)
-        self.ms_end.pack(side="left", fill="x", expand=True)
+        timestamp_end_frame = ttk.Frame(tab)
+        timestamp_end_frame.grid(row=7, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
+        ttk.Spinbox(timestamp_end_frame, textvariable=self.gui_vars.settings["trim"]["hh_end"]["var"], from_=0, to=99, width=3, format="%02.0f").pack(
+            side="left", fill="x", expand=True
+        )
+        ttk.Label(timestamp_end_frame, text=" : ").pack(side="left")
+        ttk.Spinbox(timestamp_end_frame, textvariable=self.gui_vars.settings["trim"]["mm_end"]["var"], from_=0, to=59, width=3, format="%02.0f").pack(
+            side="left", fill="x", expand=True
+        )
+        ttk.Label(timestamp_end_frame, text=" : ").pack(side="left")
+        ttk.Spinbox(timestamp_end_frame, textvariable=self.gui_vars.settings["trim"]["ss_end"]["var"], from_=0, to=59, width=3, format="%02.0f").pack(
+            side="left", fill="x", expand=True
+        )
+        ttk.Label(timestamp_end_frame, text=" . ").pack(side="left")
+        ttk.Spinbox(timestamp_end_frame, textvariable=self.gui_vars.settings["trim"]["ms_end"]["var"], from_=0, to=999, width=4).pack(
+            side="left", fill="x", expand=True
+        )
 
         tab.grid_rowconfigure(8, weight=1)
         ttk.Separator(tab, orient="horizontal").grid(row=9, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
@@ -668,18 +676,18 @@ class GUI:
             raise TypeError()
 
         def get_timestamp_start() -> media_info.Timestamp:
-            hh: str | int | None = self.hh_start.get()
-            mm: str | int | None = self.mm_start.get()
-            ss: str | int | None = self.ss_start.get()
-            ms: str | int | None = self.ms_start.get()
+            hh: str | int | None = self.gui_vars.settings["trim"]["hh_start"]["var"].get()
+            mm: str | int | None = self.gui_vars.settings["trim"]["mm_start"]["var"].get()
+            ss: str | int | None = self.gui_vars.settings["trim"]["ss_start"]["var"].get()
+            ms: str | int | None = self.gui_vars.settings["trim"]["ms_start"]["var"].get()
 
             return validate_timestamp(hh, mm, ss, ms)
 
         def get_timestamp_end() -> media_info.Timestamp:
-            hh: str | int | None = self.hh_end.get()
-            mm: str | int | None = self.mm_end.get()
-            ss: str | int | None = self.ss_end.get()
-            ms: str | int | None = self.ms_end.get()
+            hh: str | int | None = self.gui_vars.settings["trim"]["hh_end"]["var"].get()
+            mm: str | int | None = self.gui_vars.settings["trim"]["mm_end"]["var"].get()
+            ss: str | int | None = self.gui_vars.settings["trim"]["ss_end"]["var"].get()
+            ms: str | int | None = self.gui_vars.settings["trim"]["ms_end"]["var"].get()
 
             return validate_timestamp(hh, mm, ss, ms)
 
@@ -809,12 +817,17 @@ class GUI:
         ]
 
         # trim / timestamp command
-        if self.gui_vars.settings["general"]["trim_enabled"]["var"].get():
-            if timestamp_start and timestamp_start != self.original_start:
+        if self.gui_vars.settings["trim"]["trim_enabled"]["var"].get():
+            if timestamp_start and timestamp_start != media_info.Timestamp(0, 0, 0, 0):
                 cmd.append("-ss")
                 cmd.append(str(timestamp_start))
                 video_copy = False
-            if timestamp_end and timestamp_end != self.original_end:
+            if timestamp_end and timestamp_end != media_info.Timestamp(
+                self.gui_vars.settings["trim"]["original_hh_end"]["var"].get(),
+                self.gui_vars.settings["trim"]["original_mm_end"]["var"].get(),
+                self.gui_vars.settings["trim"]["original_ss_end"]["var"].get(),
+                self.gui_vars.settings["trim"]["original_ms_end"]["var"].get(),
+            ):
                 cmd.append("-to")
                 cmd.append(str(timestamp_end))
                 video_copy = False
@@ -823,10 +836,10 @@ class GUI:
         video_filters = []
         # crop command
         if self.gui_vars.settings["crop"]["crop_enabled"]["var"].get() and (
-            width != self.gui_vars.settings["crop"]["original_width"]["var"]
-            or height != self.gui_vars.settings["crop"]["original_height"]["var"]
-            or left_top_x != self.gui_vars.settings["crop"]["original_left_top_x"]["var"]
-            or left_top_y != self.gui_vars.settings["crop"]["original_left_top_y"]["var"]
+            width != self.gui_vars.settings["crop"]["original_width"]["var"].get()
+            or height != self.gui_vars.settings["crop"]["original_height"]["var"].get()
+            or left_top_x != self.gui_vars.settings["crop"]["original_left_top_x"]["var"].get()
+            or left_top_y != self.gui_vars.settings["crop"]["original_left_top_y"]["var"].get()
         ):
             video_filters.append(f"crop={width}:{height}:{left_top_x}:{left_top_y}")
             video_copy = False
