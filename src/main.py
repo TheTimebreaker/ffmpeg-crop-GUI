@@ -19,7 +19,7 @@ from fontTools.ttLib import TTFont  # type:ignore
 from send2trash import send2trash
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
-import filters
+import src.filters as filters
 
 
 def printable_command(cmd: list[str]) -> str:
