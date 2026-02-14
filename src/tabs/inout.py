@@ -296,14 +296,14 @@ class InOut(ttk.Frame):
         self.max_volume = v.max_volume
         self.gui_vars.settings["general"]["file"]["var"].set(path)
 
-        self.parent.width_x.set(v.width)
-        self.parent.height_y.set(v.height)
-        self.parent.left_top_x.set(0)
-        self.parent.left_top_y.set(0)
-        self.parent.original_width = v.width
-        self.parent.original_height = v.height
-        self.parent.original_left_top_x = 0
-        self.parent.original_left_top_y = 0
+        self.gui_vars.settings["crop"]["width"]["var"].set(v.width)
+        self.gui_vars.settings["crop"]["height"]["var"].set(v.height)
+        self.gui_vars.settings["crop"]["left_top_x"]["var"].set(0)
+        self.gui_vars.settings["crop"]["left_top_y"]["var"].set(0)
+        self.gui_vars.settings["crop"]["original_width"]["var"].set(v.width)
+        self.gui_vars.settings["crop"]["original_height"]["var"].set(v.height)
+        self.gui_vars.settings["crop"]["original_left_top_x"]["var"].set(0)
+        self.gui_vars.settings["crop"]["original_left_top_y"]["var"].set(0)
 
         self.parent.hh_start.set(0)
         self.parent.mm_start.set(0)

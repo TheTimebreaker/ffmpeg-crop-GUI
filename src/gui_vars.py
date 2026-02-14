@@ -27,15 +27,50 @@ class GuiVars:
                     "default": "libx264",
                     "var": tk.StringVar(root),
                 },
-                "crop_enabled": {
-                    "default": True,
-                    "var": tk.BooleanVar(root),
-                },
                 "trim_enabled": {
                     "default": True,
                     "var": tk.BooleanVar(root),
                 },
             },
+            "crop": {
+                "crop_enabled": {
+                    "default": True,
+                    "var": tk.BooleanVar(root),
+                },
+                "width": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "height": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "original_width": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "original_height": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "left_top_x": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "left_top_y": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "original_left_top_x": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+                "original_left_top_y": {
+                    "default": 0,
+                    "var": tk.IntVar(root),
+                },
+            },
+            "trim": {},
             "libx264": {
                 "crf": {
                     "default": 23,

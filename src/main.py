@@ -397,7 +397,7 @@ class GUI:
         tab.columnconfigure(1, weight=1)
         tab.columnconfigure(2, weight=1)
 
-        crop_enabled = ttk.Checkbutton(tab, variable=self.gui_vars.settings["general"]["crop_enabled"]["var"], text="Enable Crop")
+        crop_enabled = ttk.Checkbutton(tab, variable=self.gui_vars.settings["crop"]["crop_enabled"]["var"], text="Enable Crop")
         crop_enabled.grid(row=0, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
         common.ToolTip(
             crop_enabled,
@@ -410,17 +410,15 @@ class GUI:
             tab,
             text="Top left corner (X / Y)",
         ).grid(row=2, column=0, sticky="w", padx=self.padx, pady=self.pady)
-        self.left_top_x = tk.IntVar(tab)
-        self.left_top_y = tk.IntVar(tab)
         ttk.Spinbox(
             tab,
-            textvariable=self.left_top_x,
+            textvariable=self.gui_vars.settings["crop"]["left_top_x"]["var"],
             from_=0,
             to=50000,
         ).grid(row=2, column=1, sticky="ew", padx=self.padx, pady=self.pady)
         ttk.Spinbox(
             tab,
-            textvariable=self.left_top_y,
+            textvariable=self.gui_vars.settings["crop"]["left_top_y"]["var"],
             from_=0,
             to=50000,
         ).grid(row=2, column=2, sticky="ew", padx=self.padx, pady=self.pady)
@@ -430,17 +428,15 @@ class GUI:
             tab,
             text="Box width (X / Y)",
         ).grid(row=3, column=0, sticky="w", padx=self.padx, pady=self.pady)
-        self.width_x = tk.IntVar(tab)
-        self.height_y = tk.IntVar(tab)
         ttk.Spinbox(
             tab,
-            textvariable=self.width_x,
+            textvariable=self.gui_vars.settings["crop"]["width"]["var"],
             from_=0,
             to=50000,
         ).grid(row=3, column=1, sticky="ew", padx=self.padx, pady=self.pady)
         ttk.Spinbox(
             tab,
-            textvariable=self.height_y,
+            textvariable=self.gui_vars.settings["crop"]["height"]["var"],
             from_=0,
             to=50000,
         ).grid(row=3, column=2, sticky="ew", padx=self.padx, pady=self.pady)
@@ -697,10 +693,10 @@ class GUI:
 
     def get_crop(self) -> tuple[int, int, int, int] | Literal[False]:
         try:
-            width = self.width_x.get()
-            height = self.height_y.get()
-            left_top_x = self.left_top_x.get()
-            left_top_y = self.left_top_y.get()
+            width = self.gui_vars.settings["crop"]["width"]["var"].get()
+            height = self.gui_vars.settings["crop"]["height"]["var"].get()
+            left_top_x = self.gui_vars.settings["crop"]["left_top_x"]["var"].get()
+            left_top_y = self.gui_vars.settings["crop"]["left_top_y"]["var"].get()
             return width, height, left_top_x, left_top_y
         except tk.TclError:
             messagebox.showerror("Invalid CROP values", "Your crop data is invalid! Remember to only put in NUMBERS.")
@@ -826,11 +822,11 @@ class GUI:
         # Video filters
         video_filters = []
         # crop command
-        if self.gui_vars.settings["general"]["crop_enabled"]["var"].get() and (
-            width != self.original_width
-            or height != self.original_height
-            or left_top_x != self.original_left_top_x
-            or left_top_y != self.original_left_top_y
+        if self.gui_vars.settings["crop"]["crop_enabled"]["var"].get() and (
+            width != self.gui_vars.settings["crop"]["original_width"]["var"]
+            or height != self.gui_vars.settings["crop"]["original_height"]["var"]
+            or left_top_x != self.gui_vars.settings["crop"]["original_left_top_x"]["var"]
+            or left_top_y != self.gui_vars.settings["crop"]["original_left_top_y"]["var"]
         ):
             video_filters.append(f"crop={width}:{height}:{left_top_x}:{left_top_y}")
             video_copy = False
