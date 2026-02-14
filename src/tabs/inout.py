@@ -6,9 +6,7 @@ from typing import TYPE_CHECKING, Any, Final, Literal
 
 from tkinterdnd2 import DND_FILES
 
-import common
-import gui_vars
-import media_info
+from core import common, gui_vars, media_info
 
 if TYPE_CHECKING:
     from main import GUI

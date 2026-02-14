@@ -4,8 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any, Literal
 
-import common
-import gui_vars
+from core import common, gui_vars
 
 if TYPE_CHECKING:
     from main import GUI

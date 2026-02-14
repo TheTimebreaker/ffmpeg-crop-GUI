@@ -10,8 +10,7 @@ from typing import Literal
 from send2trash import send2trash
 from tkinterdnd2 import TkinterDnD
 
-import gui_vars
-import media_info
+from core import gui_vars, media_info
 from tabs import croptrim, inout, videofilter
 
 

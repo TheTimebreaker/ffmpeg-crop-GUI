@@ -1,7 +1,7 @@
 import tkinter as tk
 from typing import TypedDict
 
-import filters
+from core import filters
 
 
 class DefaultVarDict(TypedDict):

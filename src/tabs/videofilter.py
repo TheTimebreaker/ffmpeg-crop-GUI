@@ -4,10 +4,8 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-import common
-import filters
-import gui_vars
-from fontselector import select_font_path
+from core import common, filters, gui_vars
+from core.fontselector import select_font_path
 
 if TYPE_CHECKING:
     from main import GUI
