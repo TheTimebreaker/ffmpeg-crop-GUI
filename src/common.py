@@ -31,3 +31,8 @@ class ToolTip:
         if self.tip_window:
             self.tip_window.destroy()
             self.tip_window = None
+
+
+def swap_list_indices(original_list: list[Any], index_a: int, index_b: int) -> list[Any]:
+    original_list[index_a], original_list[index_b] = original_list[index_b], original_list[index_a]
+    return original_list
