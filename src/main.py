@@ -70,9 +70,7 @@ class GUI:
     def _reset_to_defaults(self) -> None:
         self.gui_vars.reset_settings_to_default()
         self.inout.update_codec_frames()
-        self.tab_videofilter.video_filter_args = []  # TODO: work this into the settings dict
         self.tab_videofilter.update_videofilter_preview()
-        # TODO: work crop/trim into settings dict
 
     def get_timestamps(self) -> tuple[media_info.Timestamp, media_info.Timestamp] | Literal[False]:
         def validate_timestamp(
@@ -185,7 +183,7 @@ class GUI:
 
     def get_video_filter_args(self) -> list[str]:
         entry_strs = []
-        for filter, individual_call in self.tab_videofilter.video_filter_args:
+        for filter, individual_call in self.gui_vars.video_filter_args:
             entry_args = []
             for i, (arg_name, arg_val) in enumerate(individual_call.items()):
                 if filter == "drawtext" and arg_name == "text":  # workaround for newline characters.
@@ -198,7 +196,6 @@ class GUI:
                 else:
                     entry_args.append(f"{arg_name}='{ffmpeg_drawtext_escape(arg_val)}'")
             entry_strs.append(f"{filter}={':'.join(entry_args)}")
-        print(entry_strs)
         return entry_strs
 
     def process(self) -> None:
@@ -254,7 +251,7 @@ class GUI:
             video_filters.append(f"crop={width}:{height}:{left_top_x}:{left_top_y}")
             video_copy = False
         # Generic filters
-        if self.tab_videofilter.video_filter_args:
+        if self.gui_vars.video_filter_args:
             video_filters += self.get_video_filter_args()
             video_copy = False
         # Apply filters

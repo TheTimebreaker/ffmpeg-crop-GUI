@@ -1,5 +1,7 @@
 import tkinter as tk
 
+import filters
+
 
 class GuiVars:
     settings: dict[str, dict[str, dict[str, str | tk.Variable]]]
@@ -155,6 +157,7 @@ class GuiVars:
                 },
             },
         }
+        self.video_filter_args: list[tuple[filters.FiltersLiteral, dict[str, str]]] = []
 
     def reset_settings_to_default(self) -> None:
         for section in self.settings.values():
@@ -163,3 +166,4 @@ class GuiVars:
                 default = option.get("default")
                 if var is not None and default is not None:
                     var.set(default)
+        self.video_filter_args = []

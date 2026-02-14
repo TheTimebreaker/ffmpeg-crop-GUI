@@ -219,8 +219,6 @@ class Videofilter(ttk.Frame):
         self.parent = parent
         self.root = root
 
-        self.video_filter_args: list[tuple[filters.FiltersLiteral, dict[str, str]]] = []
-
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -259,7 +257,7 @@ class Videofilter(ttk.Frame):
         return self
 
     def swap_videofilter_args(self, index_a: int, index_b: int) -> None:
-        common.swap_list_indices(self.video_filter_args, index_a, index_b)
+        common.swap_list_indices(self.gui_vars.video_filter_args, index_a, index_b)
         self.update_videofilter_preview()
 
     def update_videofilter_preview(self) -> None:
@@ -269,7 +267,7 @@ class Videofilter(ttk.Frame):
             return "normal"
 
         def down_button_state(row: int) -> str:
-            if row == (len(self.video_filter_args) - 1):
+            if row == (len(self.gui_vars.video_filter_args) - 1):
                 return "disabled"
             return "normal"
 
@@ -277,7 +275,7 @@ class Videofilter(ttk.Frame):
             child.destroy()
 
         row = 0
-        for filter, entry in self.video_filter_args:
+        for filter, entry in self.gui_vars.video_filter_args:
             button_frame = ttk.Frame(self.videofilter_filters_frame)
             button_frame.grid(row=row, column=0, sticky="ew", padx=self.padx, pady=self.pady)
             ttk.Button(
@@ -340,22 +338,22 @@ class Videofilter(ttk.Frame):
         )
         if dialog.args:
             if replace_index is not None:
-                self.video_filter_args[replace_index] = (selected_filter, dict(dialog.args))
+                self.gui_vars.video_filter_args[replace_index] = (selected_filter, dict(dialog.args))
             else:
-                self.video_filter_args.append((selected_filter, dict(dialog.args)))
+                self.gui_vars.video_filter_args.append((selected_filter, dict(dialog.args)))
         else:
             raise TypeError("No arguments returned...")
         self.update_videofilter_preview()
 
     def removevideofilter(self, filter_to_remove: filters.FiltersLiteral, args_to_remove: dict[str, str]) -> None:
-        for entry in self.video_filter_args:
+        for entry in self.gui_vars.video_filter_args:
             if entry == (filter_to_remove, args_to_remove):
-                self.video_filter_args.remove(entry)
+                self.gui_vars.video_filter_args.remove(entry)
                 self.update_videofilter_preview()
                 return
 
     def editvideofilter_dialog(self, filter_to_edit: filters.FiltersLiteral, args_to_edit: dict[str, str]) -> None:
-        for i, (args_filter, args_entry) in enumerate(self.video_filter_args):
+        for i, (args_filter, args_entry) in enumerate(self.gui_vars.video_filter_args):
             if args_filter == filter_to_edit and args_entry == args_to_edit:
                 self.addvideofilter_dialog(args_to_edit, replace_index=i, filter=filter_to_edit)
                 return
