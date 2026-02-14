@@ -229,8 +229,7 @@ class Videofilter(ttk.Frame):
         self.columnconfigure(2, weight=1)
 
         ttk.Label(self, text="Video filter").grid(row=0, column=0, padx=self.padx, pady=self.pady, sticky="ew")
-        self.selected_videofilter_var = tk.StringVar(self)  # TODO add to central dict
-        ttk.Combobox(self, values=[*filters.SUPPORTED_FILTERS], textvariable=self.selected_videofilter_var).grid(
+        ttk.Combobox(self, values=[*filters.SUPPORTED_FILTERS], textvariable=self.gui_vars.settings["videofilters"]["selected"]["var"]).grid(
             row=0, column=1, padx=self.padx, pady=self.pady, sticky="new"
         )
         ttk.Button(self, text="Add selected filter", command=self.addvideofilter_dialog).grid(
@@ -302,7 +301,7 @@ class Videofilter(ttk.Frame):
                 padx=self.padx,
                 pady=self.pady,
             )
-            mainlabel = ttk.Label(self.videofilter_filters_frame, text=str(entry), justify="left")  # TODO automatic wrapping
+            mainlabel = ttk.Label(self.videofilter_filters_frame, text=str(entry), justify="left")  # TODO(TheTimebreaker): automatic wrapping
             mainlabel.grid(
                 row=row,
                 column=2,
@@ -326,7 +325,7 @@ class Videofilter(ttk.Frame):
         self, prefilled_args: dict[str, str] | None = None, replace_index: int | None = None, filter: filters.FiltersLiteral | None = None
     ) -> None:
         if filter is None:
-            selected_filter = cast(filters.FiltersLiteral, self.selected_videofilter_var.get())
+            selected_filter = cast(filters.FiltersLiteral, self.gui_vars.settings["videofilters"]["selected"]["var"].get())
         else:
             selected_filter = cast(filters.FiltersLiteral, filter)
         selected_typeddict = filters.filtermap(selected_filter)

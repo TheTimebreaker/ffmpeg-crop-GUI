@@ -120,6 +120,12 @@ class GuiVars:
                     "var": tk.IntVar(root),
                 },
             },
+            "videofilters": {
+                "selected": {
+                    "default": None,
+                    "var": tk.StringVar(root),
+                },
+            },
             "libx264": {
                 "crf": {
                     "default": 23,

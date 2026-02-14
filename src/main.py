@@ -41,7 +41,7 @@ class GUI:
 
         self.gui_vars: gui_vars.GuiVars = vars
 
-        self.label_width = 15  # TODO enforce
+        self.label_width = 15  # TODO: enforce
         self.max_volume: float = 0.0
 
         self._build_ui()
@@ -70,7 +70,7 @@ class GUI:
     def _reset_to_defaults(self) -> None:
         self.gui_vars.reset_settings_to_default()
         self.inout.update_codec_frames()
-        self.tab_videofilter.video_filter_args = []  # TODO work this into the settings dict
+        self.tab_videofilter.video_filter_args = []  # TODO: work this into the settings dict
         self.tab_videofilter.update_videofilter_preview()
         # TODO: work crop/trim into settings dict
 

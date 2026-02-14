@@ -36,6 +36,8 @@ extend-select = ["N815", "N816"]
 
 ignore = [
   "ANN401", #allow type:Any
+  "TD003", #Missing issue link for this TODOs
+  "TD002", #Missing author in TODO
 ]
 
 [tool.pylint."MASTER"]
