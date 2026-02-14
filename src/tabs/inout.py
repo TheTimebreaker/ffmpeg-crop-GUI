@@ -59,6 +59,9 @@ class InOut(ttk.Frame):
             "libx265",
         )
 
+        self._build_ui()
+
+    def _build_ui(self) -> None:
         self.columnconfigure(0, weight=0)
         self.columnconfigure(1, weight=1)
 
