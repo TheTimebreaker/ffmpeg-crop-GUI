@@ -38,10 +38,7 @@ class GUI:
         self.root.resizable(True, False)
 
         self.cleanup_files: list[Path] = []
-
         self.gui_vars: gui_vars.GuiVars = vars
-
-        self.label_width = 15  # TODO: enforce
         self.max_volume: float = 0.0
 
         self._build_ui()
