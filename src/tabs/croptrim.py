@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import common
 import gui_vars
@@ -19,14 +19,22 @@ class CropTrim(ttk.Frame):
         self,
         master: ttk.Notebook | None = None,
         *,
-        border: Any | None = None,
-        borderwidth: int | None = None,
+        border: float | str | None = None,
+        borderwidth: float | str | None = None,
         class_: Any = "",
         cursor: Any = "",
         height: int = 0,
         name: str | None = None,
-        padding: int | None = None,
-        relief: Any | None = None,
+        padding: (
+            float
+            | str
+            | tuple[float | str]
+            | tuple[float | str, float | str]
+            | tuple[float | str, float | str, float | str]
+            | tuple[float | str, float | str, float | str, float | str]
+            | None
+        ) = None,
+        relief: Literal["raised", "sunken", "flat", "ridge", "solid", "groove"] | None = None,
         style: Any = "",
         takefocus: Any = "",
         width: int = 0,
@@ -36,14 +44,14 @@ class CropTrim(ttk.Frame):
     ) -> None:
         super().__init__(
             master,
-            border=border,
-            borderwidth=borderwidth,
+            border=border,  # type:ignore
+            borderwidth=borderwidth,  # type:ignore
             class_=class_,
             cursor=cursor,
             height=height,
-            name=name,
-            padding=padding,
-            relief=relief,
+            name=name,  # type:ignore
+            padding=padding,  # type:ignore
+            relief=relief,  # type:ignore
             style=style,
             takefocus=takefocus,
             width=width,

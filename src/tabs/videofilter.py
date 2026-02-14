@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import messagebox, ttk
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import common
 import filters
@@ -117,10 +117,10 @@ class VideofilterArgsDialog:
         delete_btn.grid(row=row_index, column=2, padx=5, pady=2)
 
         # Add trace to update combobox options when this argument changes
-        arg_var.trace("w", self._on_arg_selection_changed)  # type:ignore
+        arg_var.trace("w", self._on_arg_selection_changed)
 
         # Add trace to handle fontfile special case
-        arg_var.trace("w", lambda *_args: self._fontfile_selected_check(arg_var, value_var))  # type:ignore
+        arg_var.trace("w", lambda *_args: self._fontfile_selected_check(arg_var, value_var))
 
         self.rows.append((arg_var, value_var, row_index))
 
@@ -186,14 +186,22 @@ class Videofilter(ttk.Frame):
         self,
         master: ttk.Notebook | None = None,
         *,
-        border: Any | None = None,
-        borderwidth: int | None = None,
+        border: float | str | None = None,
+        borderwidth: float | str | None = None,
         class_: Any = "",
         cursor: Any = "",
         height: int = 0,
         name: str | None = None,
-        padding: int | None = None,
-        relief: Any | None = None,
+        padding: (
+            float
+            | str
+            | tuple[float | str]
+            | tuple[float | str, float | str]
+            | tuple[float | str, float | str, float | str]
+            | tuple[float | str, float | str, float | str, float | str]
+            | None
+        ) = None,
+        relief: Literal["raised", "sunken", "flat", "ridge", "solid", "groove"] | None = None,
         style: Any = "",
         takefocus: Any = "",
         width: int = 0,
@@ -203,14 +211,14 @@ class Videofilter(ttk.Frame):
     ) -> None:
         super().__init__(
             master,
-            border=border,
-            borderwidth=borderwidth,
+            border=border,  # type:ignore
+            borderwidth=borderwidth,  # type:ignore
             class_=class_,
             cursor=cursor,
             height=height,
-            name=name,
-            padding=padding,
-            relief=relief,
+            name=name,  # type:ignore
+            padding=padding,  # type:ignore
+            relief=relief,  # type:ignore
             style=style,
             takefocus=takefocus,
             width=width,
@@ -253,8 +261,6 @@ class Videofilter(ttk.Frame):
         self.videofilter_filters_frame.columnconfigure(2, weight=1)
         self.videofilter_filters_frame.columnconfigure(3, weight=0)
         self.videofilter_filters_frame.columnconfigure(4, weight=0)
-
-        return self
 
     def swap_videofilter_args(self, index_a: int, index_b: int) -> None:
         common.swap_list_indices(self.gui_vars.video_filter_args, index_a, index_b)

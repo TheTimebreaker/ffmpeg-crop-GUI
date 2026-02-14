@@ -119,21 +119,21 @@ class GUI:
         args: list[str] = ["-c:v", "libx264"]
 
         # crf
-        crf_default: int = self.gui_vars.settings["libx264"]["crf"]["default"]
+        crf_default: int = int(self.gui_vars.settings["libx264"]["crf"]["default"])
         crf_selection: int = self.gui_vars.settings["libx264"]["crf"]["var"].get()
         if crf_default != crf_selection:
             args.append("-crf")
             args.append(str(crf_selection))
 
         # preset
-        preset_default: str = self.gui_vars.settings["libx264"]["preset"]["default"]
+        preset_default: str = str(self.gui_vars.settings["libx264"]["preset"]["default"])
         preset_selection: str = self.gui_vars.settings["libx264"]["preset"]["var"].get()
         if preset_default != preset_selection:
             args.append("-preset")
             args.append(preset_selection)
 
         # tune
-        tune_default: str = self.gui_vars.settings["libx264"]["tune"]["default"]
+        tune_default: str = str(self.gui_vars.settings["libx264"]["tune"]["default"])
         tune_selection: str = self.gui_vars.settings["libx264"]["tune"]["var"].get()
         if tune_default != tune_selection:
             args.append("-tune")
@@ -145,21 +145,21 @@ class GUI:
         args: list[str] = ["-c:v", "libx265"]
 
         # crf
-        crf_default: int = self.gui_vars.settings["libx265"]["crf"]["default"]
+        crf_default: int = int(self.gui_vars.settings["libx265"]["crf"]["default"])
         crf_selection: int = self.gui_vars.settings["libx265"]["crf"]["var"].get()
         if crf_default != crf_selection:
             args.append("-crf")
             args.append(str(crf_selection))
 
         # preset
-        preset_default: str = self.gui_vars.settings["libx265"]["preset"]["default"]
+        preset_default: str = str(self.gui_vars.settings["libx265"]["preset"]["default"])
         preset_selection: str = self.gui_vars.settings["libx265"]["preset"]["var"].get()
         if preset_default != preset_selection:
             args.append("-preset")
             args.append(preset_selection)
 
         # tune
-        tune_default: str = self.gui_vars.settings["libx265"]["tune"]["default"]
+        tune_default: str = str(self.gui_vars.settings["libx265"]["tune"]["default"])
         tune_selection: str = self.gui_vars.settings["libx265"]["tune"]["var"].get()
         if tune_default != tune_selection:
             args.append("-tune")

@@ -1,10 +1,16 @@
 import tkinter as tk
+from typing import TypedDict
 
 import filters
 
 
+class DefaultVarDict(TypedDict):
+    default: str | int | bool
+    var: tk.Variable
+
+
 class GuiVars:
-    settings: dict[str, dict[str, dict[str, str | tk.Variable]]]
+    settings: dict[str, dict[str, DefaultVarDict]]
 
     def __init__(self, root: tk.Tk) -> None:
         self.setup_settings(root)
@@ -124,7 +130,7 @@ class GuiVars:
             },
             "videofilters": {
                 "selected": {
-                    "default": None,
+                    "default": "",
                     "var": tk.StringVar(root),
                 },
             },

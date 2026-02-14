@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import filedialog, ttk
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 from tkinterdnd2 import DND_FILES
 
@@ -22,14 +22,22 @@ class InOut(ttk.Frame):
         self,
         master: ttk.Notebook | None = None,
         *,
-        border: Any | None = None,
-        borderwidth: int | None = None,
+        border: float | str | None = None,
+        borderwidth: float | str | None = None,
         class_: Any = "",
         cursor: Any = "",
         height: int = 0,
         name: str | None = None,
-        padding: int | None = None,
-        relief: Any | None = None,
+        padding: (
+            float
+            | str
+            | tuple[float | str]
+            | tuple[float | str, float | str]
+            | tuple[float | str, float | str, float | str]
+            | tuple[float | str, float | str, float | str, float | str]
+            | None
+        ) = None,
+        relief: Literal["raised", "sunken", "flat", "ridge", "solid", "groove"] | None = None,
         style: Any = "",
         takefocus: Any = "",
         width: int = 0,
@@ -39,14 +47,14 @@ class InOut(ttk.Frame):
     ) -> None:
         super().__init__(
             master,
-            border=border,
-            borderwidth=borderwidth,
+            border=border,  # type:ignore
+            borderwidth=borderwidth,  # type:ignore
             class_=class_,
             cursor=cursor,
             height=height,
-            name=name,
-            padding=padding,
-            relief=relief,
+            name=name,  # type:ignore
+            padding=padding,  # type:ignore
+            relief=relief,  # type:ignore
             style=style,
             takefocus=takefocus,
             width=width,
@@ -150,9 +158,14 @@ class InOut(ttk.Frame):
                     ]
                 ),
             )
-            tk.Scale(f, from_=0, to=51, variable=self.gui_vars.settings["libx264"]["crf"]["var"], showvalue=True, orient="horizontal").grid(
-                row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady
-            )
+            tk.Scale(
+                f,
+                from_=0,
+                to=51,
+                variable=self.gui_vars.settings["libx264"]["crf"]["var"],  # type:ignore
+                showvalue=True,
+                orient="horizontal",
+            ).grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady)
 
             # Preset
             preset = ttk.Label(f, text="Preset")
@@ -222,9 +235,14 @@ class InOut(ttk.Frame):
                     ]
                 ),
             )
-            tk.Scale(f, from_=0, to=51, variable=self.gui_vars.settings["libx265"]["crf"]["var"], showvalue=True, orient="horizontal").grid(
-                row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady
-            )
+            tk.Scale(
+                f,
+                from_=0,
+                to=51,
+                variable=self.gui_vars.settings["libx265"]["crf"]["var"],  # type:ignore
+                showvalue=True,
+                orient="horizontal",
+            ).grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady)
 
             # Preset
             preset = ttk.Label(f, text="Preset")

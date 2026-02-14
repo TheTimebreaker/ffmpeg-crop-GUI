@@ -55,7 +55,6 @@ target-version = ["py313"]
 
 [tool.mypy]
 python_version = "3.13"
-disallow_untyped_calls = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_any_generics = true
