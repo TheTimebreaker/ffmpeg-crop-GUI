@@ -35,11 +35,8 @@ def ffmpeg_drawtext_escape(text: str) -> str:
 
 def get_font_family(font_path: str) -> str:
     font_obj = TTFont(font_path)
-    # 'name' table contains family and other name records
     for record in font_obj["name"].names:
-        # Name ID 1 is the font family
         if record.nameID == 1:
-            # Decode depending on platform
             try:
                 if b"\x00" in record.string:
                     return str(record.string.decode("utf-16-be"))
@@ -1013,7 +1010,8 @@ class GUI:
                 padx=self.padx,
                 pady=self.pady,
             )
-            ttk.Label(self.videofilter_filters_frame, text=str(entry), justify="left").grid(
+            mainlabel = ttk.Label(self.videofilter_filters_frame, text=str(entry), justify="left")  # TODO automatic wrapping
+            mainlabel.grid(
                 row=row,
                 column=2,
                 sticky="ew",
@@ -1075,16 +1073,28 @@ class GUI:
 
         tab = ttk.Frame(root)
         tab.columnconfigure(0, weight=0)
-        tab.columnconfigure(1, weight=1)
-        tab.columnconfigure(2, weight=5)
+        tab.columnconfigure(1, weight=0)
+        tab.columnconfigure(2, weight=1)
 
-        ttk.Label(tab, text="Video filter").grid(row=0, column=0, padx=self.padx, pady=self.pady, sticky="w")
+        ttk.Label(tab, text="Video filter").grid(row=0, column=0, padx=self.padx, pady=self.pady, sticky="ew")
         self.selected_videofilter_var = tk.StringVar(tab)  # TODO add to central dict
         ttk.Combobox(tab, values=[*filters.SUPPORTED_FILTERS], textvariable=self.selected_videofilter_var).grid(
             row=0, column=1, padx=self.padx, pady=self.pady, sticky="new"
         )
         ttk.Button(tab, text="Add selected filter", command=self.addvideofilter_dialog).grid(
             row=1, column=0, columnspan=2, padx=self.padx, pady=self.pady, sticky="new"
+        )
+
+        hover = ttk.Label(tab, text="Hover here for additional info...")
+        hover.grid(row=2, column=0, columnspan=2, padx=self.padx, pady=self.pady, sticky="w")
+        ToolTip(
+            hover,
+            "FFmpeg's video filters are very deep!\n"
+            "It is generally recommended to check the official documentation\n"
+            "before using them here.\n\n"
+            "Addtionally, this filter section does very little verification.\n"
+            "This means that using filters incorrectly will let you run the\n"
+            "command without it working properly.\n",
         )
 
         self.videofilter_filters_frame = ttk.Frame(tab)
@@ -1095,14 +1105,14 @@ class GUI:
         self.videofilter_filters_frame.columnconfigure(3, weight=0)
         self.videofilter_filters_frame.columnconfigure(4, weight=0)
 
-        tab.grid_rowconfigure(1, weight=1)  # spacer
-        ttk.Separator(tab, orient="horizontal").grid(row=2, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        tab.grid_rowconfigure(3, weight=1)  # spacer
+        ttk.Separator(tab, orient="horizontal").grid(row=4, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
         self.process_button = ttk.Button(
             tab,
             text="Process",
             command=self.process,
         )
-        self.process_button.grid(row=3, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        self.process_button.grid(row=5, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
 
         return tab
 
