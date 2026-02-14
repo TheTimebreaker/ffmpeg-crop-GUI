@@ -1,3 +1,16 @@
+altgraph==0.17.5
 fonttools==4.61.1
+librt==0.8.0
+mypy==1.19.1
+mypy_extensions==1.1.0
+packaging==26.0
+pathspec==1.0.4
+pefile==2024.8.26
+pyinstaller==6.19.0
+pyinstaller-hooks-contrib==2026.0
+pywin32-ctypes==0.2.3
 Send2Trash==2.1.0
+setuptools==82.0.0
 tkinterdnd2==0.4.3
+types-Send2Trash==2.1.0.20260117
+typing_extensions==4.15.0
