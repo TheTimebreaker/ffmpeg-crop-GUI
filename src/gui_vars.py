@@ -1,0 +1,75 @@
+import tkinter as tk
+
+
+class GuiVars:
+    settings: dict[str, dict[str, dict[str, str | tk.Variable]]]
+
+    def __init__(self, root: tk.Tk) -> None:
+        self.setup_settings(root)
+        self.reset_settings_to_default()
+
+    def setup_settings(self, root: tk.Tk) -> None:
+        self.settings = {
+            "general": {
+                "file": {
+                    "default": "Double click here or Drag & drop file ...",
+                    "var": tk.StringVar(root),
+                },
+                "normalize_audio": {
+                    "default": True,
+                    "var": tk.BooleanVar(root),
+                },
+                "force_reencoding_video": {
+                    "default": False,
+                    "var": tk.BooleanVar(root),
+                },
+                "selected_encoder_video": {
+                    "default": "libx264",
+                    "var": tk.StringVar(root),
+                },
+                "crop_enabled": {
+                    "default": True,
+                    "var": tk.BooleanVar(root),
+                },
+                "trim_enabled": {
+                    "default": True,
+                    "var": tk.BooleanVar(root),
+                },
+            },
+            "libx264": {
+                "crf": {
+                    "default": 23,
+                    "var": tk.IntVar(root),
+                },
+                "preset": {
+                    "default": "medium",
+                    "var": tk.StringVar(root),
+                },
+                "tune": {
+                    "default": "DEFAULT",
+                    "var": tk.StringVar(root),
+                },
+            },
+            "libx265": {
+                "crf": {
+                    "default": 28,
+                    "var": tk.IntVar(root),
+                },
+                "preset": {
+                    "default": "medium",
+                    "var": tk.StringVar(root),
+                },
+                "tune": {
+                    "default": "DEFAULT",
+                    "var": tk.StringVar(root),
+                },
+            },
+        }
+
+    def reset_settings_to_default(self) -> None:
+        for section in self.settings.values():
+            for option in section.values():
+                var = option.get("var")
+                default = option.get("default")
+                if var is not None and default is not None:
+                    var.set(default)
