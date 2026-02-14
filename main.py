@@ -1,3 +1,4 @@
+import atexit
 import datetime
 import json
 import logging
@@ -10,10 +11,12 @@ import subprocess
 import sys
 import tkinter as tk
 from dataclasses import dataclass
+from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Final, Literal, cast, overload
 
 from fontTools.ttLib import TTFont  # type:ignore
+from send2trash import send2trash
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
 import filters
@@ -45,6 +48,11 @@ def get_font_family(font_path: str) -> str:
             except UnicodeDecodeError:
                 return str(record.string.decode("latin-1"))
     return "UnknownFamily"
+
+
+def swap_list_indices(original_list: list[Any], index_a: int, index_b: int) -> list[Any]:
+    original_list[index_a], original_list[index_b] = original_list[index_b], original_list[index_a]
+    return original_list
 
 
 def create_fake_font(root: tk.Tk | tk.Toplevel, font_path: str, font_size: int = 12) -> str:
@@ -532,6 +540,8 @@ class GUI:
         self.root.minsize(800, 0)
         self.root.resizable(True, False)
 
+        self.cleanup_files: list[Path] = []
+
         self.CODECS_VIDEO: Final = (  # pylint:disable=C0103
             "libx264",
             "libx265",
@@ -589,7 +599,7 @@ class GUI:
             },
         }
         self.reset_settings_to_default()
-        self.video_filter_args: dict[filters.FiltersLiteral, list[dict[str, str]]] = {}
+        self.video_filter_args: list[tuple[filters.FiltersLiteral, dict[str, str]]] = []
 
         self.label_width = 15
         self.max_volume: float = 0.0
@@ -960,37 +970,75 @@ class GUI:
 
         return tab
 
+    def swap_videofilter_args(self, index_a: int, index_b: int) -> None:
+        swap_list_indices(self.video_filter_args, index_a, index_b)
+        self.update_videofilter_preview()
+
     def update_videofilter_preview(self) -> None:
+        def up_button_state(row: int) -> str:
+            if row == 0:
+                return "disabled"
+            return "normal"
+
+        def down_button_state(row: int) -> str:
+            if row == (len(self.video_filter_args) - 1):
+                return "disabled"
+            return "normal"
+
         for child in self.videofilter_filters_frame.winfo_children():
             child.destroy()
 
         row = 0
-        for filter, entries in self.video_filter_args.items():
-            print(filter, entries)
-            for entry in entries:
-                ttk.Label(self.videofilter_filters_frame, text=filter, justify="left").grid(
-                    row=row,
-                    column=0,
-                    sticky="ew",
-                    padx=self.padx,
-                    pady=self.pady,
-                )
-                ttk.Label(self.videofilter_filters_frame, text=str(entry), justify="left").grid(
-                    row=row,
-                    column=1,
-                    sticky="ew",
-                    padx=self.padx,
-                    pady=self.pady,
-                )
-                ttk.Button(
-                    self.videofilter_filters_frame,
-                    text="Edit",
-                    command=lambda f=filter, e=entry: self.editvideofilter_dialog(f, e),  # type:ignore
-                ).grid(row=row, column=2, sticky="ew", padx=self.padx, pady=self.pady)
-                row += 1
+        for filter, entry in self.video_filter_args:
+            button_frame = ttk.Frame(self.videofilter_filters_frame)
+            button_frame.grid(row=row, column=0, sticky="ew", padx=self.padx, pady=self.pady)
+            ttk.Button(
+                button_frame,
+                text="↑",
+                width=2,
+                state=up_button_state(row),
+                command=lambda ia=row, ib=row - 1: self.swap_videofilter_args(ia, ib),  # type:ignore
+            ).grid(row=0, column=0)
+            ttk.Button(
+                button_frame,
+                text="↓",
+                width=2,
+                state=down_button_state(row),
+                command=lambda ia=row, ib=row + 1: self.swap_videofilter_args(ia, ib),  # type:ignore
+            ).grid(row=0, column=1)
+            ttk.Label(self.videofilter_filters_frame, text=filter, justify="left").grid(
+                row=row,
+                column=1,
+                sticky="ew",
+                padx=self.padx,
+                pady=self.pady,
+            )
+            ttk.Label(self.videofilter_filters_frame, text=str(entry), justify="left").grid(
+                row=row,
+                column=2,
+                sticky="ew",
+                padx=self.padx,
+                pady=self.pady,
+            )
+            ttk.Button(
+                self.videofilter_filters_frame,
+                text="Edit",
+                command=lambda f=filter, e=entry: self.editvideofilter_dialog(f, e),  # type:ignore
+            ).grid(row=row, column=3, sticky="ew", padx=self.padx, pady=self.pady)
+            ttk.Button(
+                self.videofilter_filters_frame,
+                text="Remove",
+                command=lambda f=filter, e=entry: self.removevideofilter(f, e),  # type:ignore
+            ).grid(row=row, column=4, sticky="ew", padx=self.padx, pady=self.pady)
+            row += 1
 
-    def addvideofilter_dialog(self, prefilled_args: dict[str, str] | None = None, replace_index: int | None = None) -> None:
-        selected_filter = cast(filters.FiltersLiteral, self.selected_videofilter_var.get())
+    def addvideofilter_dialog(
+        self, prefilled_args: dict[str, str] | None = None, replace_index: int | None = None, filter: filters.FiltersLiteral | None = None
+    ) -> None:
+        if filter is None:
+            selected_filter = cast(filters.FiltersLiteral, self.selected_videofilter_var.get())
+        else:
+            selected_filter = cast(filters.FiltersLiteral, filter)
         selected_typeddict = filters.filtermap(selected_filter)
         required = list(selected_typeddict.__required_keys__)  # type:ignore
         optional = list(selected_typeddict.__optional_keys__)  # type:ignore
@@ -1002,20 +1050,25 @@ class GUI:
             prefilled_args=prefilled_args,
         )
         if dialog.args:
-            if selected_filter not in self.video_filter_args:
-                self.video_filter_args[selected_filter] = []
             if replace_index is not None:
-                self.video_filter_args[selected_filter][replace_index] = dict(dialog.args)
+                self.video_filter_args[replace_index] = (selected_filter, dict(dialog.args))
             else:
-                self.video_filter_args[selected_filter].append(dict(dialog.args))
+                self.video_filter_args.append((selected_filter, dict(dialog.args)))
         else:
             raise TypeError("No arguments returned...")
         self.update_videofilter_preview()
 
-    def editvideofilter_dialog(self, filter: filters.FiltersLiteral, args_to_edit: dict[str, str]) -> None:
-        for i, args_entry in enumerate(self.video_filter_args[filter]):
-            if args_entry == args_to_edit:
-                self.addvideofilter_dialog(args_to_edit, i)
+    def removevideofilter(self, filter_to_remove: filters.FiltersLiteral, args_to_remove: dict[str, str]) -> None:
+        for entry in self.video_filter_args:
+            if entry == (filter_to_remove, args_to_remove):
+                self.video_filter_args.remove(entry)
+                self.update_videofilter_preview()
+                return
+
+    def editvideofilter_dialog(self, filter_to_edit: filters.FiltersLiteral, args_to_edit: dict[str, str]) -> None:
+        for i, (args_filter, args_entry) in enumerate(self.video_filter_args):
+            if args_filter == filter_to_edit and args_entry == args_to_edit:
+                self.addvideofilter_dialog(args_to_edit, replace_index=i, filter=filter_to_edit)
                 return
 
     def _tab_addvideofilter(self, root: TkinterDnD.Tk | ttk.Notebook) -> ttk.Frame:
@@ -1037,8 +1090,10 @@ class GUI:
         self.videofilter_filters_frame = ttk.Frame(tab)
         self.videofilter_filters_frame.grid(row=0, column=2, rowspan=2, sticky="nsew")
         self.videofilter_filters_frame.columnconfigure(0, weight=0)
-        self.videofilter_filters_frame.columnconfigure(1, weight=1)
-        self.videofilter_filters_frame.columnconfigure(2, weight=0)
+        self.videofilter_filters_frame.columnconfigure(1, weight=0)
+        self.videofilter_filters_frame.columnconfigure(2, weight=1)
+        self.videofilter_filters_frame.columnconfigure(3, weight=0)
+        self.videofilter_filters_frame.columnconfigure(4, weight=0)
 
         tab.grid_rowconfigure(1, weight=1)  # spacer
         ttk.Separator(tab, orient="horizontal").grid(row=2, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
@@ -1064,7 +1119,7 @@ class GUI:
     def _reset_to_defaults(self) -> None:
         self.reset_settings_to_default()
         self.update_codec_frames()
-        self.video_filter_args = {}  # TODO work this into the settings dict
+        self.video_filter_args = []  # TODO work this into the settings dict
         self.update_videofilter_preview()
         # TODO: work crop/trim into settings dict
 
@@ -1206,12 +1261,19 @@ class GUI:
 
     def get_video_filter_args(self) -> list[str]:
         entry_strs = []
-        for filter, all_calls_of_filter in self.video_filter_args.items():
-            for individual_call in all_calls_of_filter:
-                entry_args = []
-                for arg_name, arg_val in individual_call.items():
+        for filter, individual_call in self.video_filter_args:
+            entry_args = []
+            for i, (arg_name, arg_val) in enumerate(individual_call.items()):
+                if filter == "drawtext" and arg_name == "text":  # workaround for newline characters.
+                    tmppath = Path(f"ffmpeg_text_tempfile_{i}.txt").resolve()
+                    self.cleanup_files.append(tmppath)
+                    with open(tmppath, encoding="utf-8", mode="w") as f:
+                        f.write(arg_val.replace("\\n", "\n"))
+
+                    entry_args.append(f"textfile='{ffmpeg_drawtext_escape(str(tmppath))}'")
+                else:
                     entry_args.append(f"{arg_name}='{ffmpeg_drawtext_escape(arg_val)}'")
-                entry_strs.append(f"{filter}={':'.join(entry_args)}")
+            entry_strs.append(f"{filter}={':'.join(entry_args)}")
         print(entry_strs)
         return entry_strs
 
@@ -1291,9 +1353,9 @@ class GUI:
         # output filename
         cmd.append(".".join(file.split(".")[0:-1]) + "-cropped." + file.split(".")[-1])
 
-        print(printable_command(cmd))
+        print(cmd, printable_command(cmd))
         if sys.platform == "win32":
-            subprocess.run(cmd, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            subprocess.run(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
         else:
             subprocess.run(cmd, shell=True)
 
@@ -1301,9 +1363,19 @@ class GUI:
         self.root.destroy()
 
 
+def cleanup(g: GUI) -> None:
+    for file in g.cleanup_files:
+        try:
+            send2trash(file)
+        except Exception:
+            print(f"An exception occurred while trying to delete file {file}")
+
+
 def main() -> None:
     root = TkinterDnD.Tk()
-    GUI(root)
+    g = GUI(root)
+
+    atexit.register(cleanup, g)
     root.mainloop()
 
 

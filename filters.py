@@ -1,13 +1,14 @@
-from typing import Literal, NotRequired, TypedDict, TypeVar
+from typing import Literal, NotRequired, TypedDict
 
-SUPPORTED_FILTERS = ("drawtext",)
-FiltersLiteral = Literal["drawtext"]
+SUPPORTED_FILTERS = ("drawtext", "pad")
+FiltersLiteral = Literal["drawtext", "pad"]
 
 
 class GeneralFilterSettings(TypedDict):
     enable: NotRequired[str]
 
 
+# TODO: explanation of these args, better sortin
 class Drawtext(GeneralFilterSettings):
     fontfile: str
     text: str
@@ -30,14 +31,22 @@ class Drawtext(GeneralFilterSettings):
     shadowy: NotRequired[int]
 
 
+class Pad(GeneralFilterSettings):
+    width: NotRequired[str]
+    height: NotRequired[str]
+    color: NotRequired[str]
+    x: NotRequired[int]
+    y: NotRequired[int]
+
+
 class Filters(TypedDict):
     drawtext: Drawtext
+    pad: Pad
 
 
-T = TypeVar("T", bound=Drawtext)
-
-
-def filtermap(filter: FiltersLiteral) -> type[Drawtext]:
+def filtermap(filter: FiltersLiteral) -> type[GeneralFilterSettings]:
     match filter:
         case "drawtext":
             return Drawtext
+        case "pad":
+            return Pad
