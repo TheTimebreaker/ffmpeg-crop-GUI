@@ -32,7 +32,7 @@ class GuiVars:
                     "var": tk.BooleanVar(root),
                 },
                 "selected_encoder_video": {
-                    "default": "libx264",
+                    "default": "libx265",
                     "var": tk.StringVar(root),
                 },
             },

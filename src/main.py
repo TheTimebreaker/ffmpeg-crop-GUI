@@ -13,6 +13,11 @@ from tkinterdnd2 import TkinterDnD
 from core import gui_vars, media_info
 from tabs import croptrim, inout, videofilter
 
+# TODO: dont reset encoder settings
+# TODO: add reset encoder settings button
+# TODO: audio encoder
+# TODO: progress bar
+
 
 def printable_command(cmd: list[str]) -> str:
     if sys.platform == "win32":
@@ -279,7 +284,7 @@ class GUI:
         if sys.platform == "win32":
             subprocess.run(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
         else:
-            subprocess.run(cmd, shell=True)
+            subprocess.run(cmd)
 
     def on_close(self) -> None:
         self.root.destroy()
