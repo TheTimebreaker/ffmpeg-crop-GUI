@@ -22,7 +22,7 @@ Features include:
 * You can download pre-compiled, read-to-use executables for Windows in the [release tab](https://github.com/TheTimebreaker/duplicate_image_finder/releases)
     * <i>These still require ffmpeg to be installed on your system!</i>
 * Compile it yourself
-    * Download the repository (either by using `git clone` or by downloading the ZIP straight from github)
+    * Download the repository (by using `git clone`)
     * Open the repository directory in your terminal (the repo directory is where the directory `/src` and the file `Makefile` are)
     * Create a virtual environment with Python 3.14 by running any of the following (verify first that calling python in the way youre doing it actually is using python 3.14):
         * `python3.14 -m venv .venv`
