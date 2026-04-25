@@ -34,5 +34,5 @@ Features include:
         * MacOS: idk, probably similar to Linux though
     * Install requirements: `pip install . && pip install pyinstaller`
         * <i>These are the requirements of the program and NOT the development requirements. For developing, run `pip install -r requirements.txt`</i>
-    * Run either `make build` if you have make installer or `pyinstaller ffmpeg_crop_gui.spec`
+    * Run either `make build` if you have make installed or `pyinstaller ffmpeg_crop_gui.spec`
     * The compiled executable should appear under `/dist`
