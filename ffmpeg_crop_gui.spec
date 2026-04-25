@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+import subprocess
 
 
 a = Analysis(
@@ -16,13 +17,17 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
+version = subprocess.check_output(
+    ["git", "describe", "--tags", "--abbrev=0"]
+).decode().strip()
+
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
     a.datas,
     [],
-    name='FFmpeg Crop GUI',
+    name=f'FFmpeg Crop GUI {version}',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

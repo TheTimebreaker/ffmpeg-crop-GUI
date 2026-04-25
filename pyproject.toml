@@ -1,6 +1,23 @@
+[project]
+name="ffmpeg-crop-gui"
+dynamic=["version"]
+description="A GUI application for ffmpeg"
+authors=[{name="TheTimebreaker"}]
+readme="README.md"
+requires-python=">=3.14"
+dependencies = [
+  "Send2Trash~=2.1.0",
+  "fonttools~=4.61.1",
+  "tkinterdnd2~=0.4.3",
+]
+
+[tool.setuptools.package-data]
+duplicate-image-finder = ["py.typed"]
+
+
 [tool.ruff]
 line-length = 150
-target-version = "py313"
+target-version = "py314"
 
 exclude = [
   ".venv",
@@ -51,17 +68,16 @@ ignore-paths = [".venv"]
 
 [tool.black]
 line-length = 150
-target-version = ["py313"]
+target-version = ["py314"]
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_any_generics = true
 check_untyped_defs = true
 warn_unused_ignores = true
 warn_return_any = true
-# strict_optional = true # activate later
 
 
 [[tool.mypy.overrides]]
