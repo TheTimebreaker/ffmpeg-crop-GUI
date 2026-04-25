@@ -1,7 +1,7 @@
 from typing import Literal, NotRequired, TypedDict
 
-SUPPORTED_FILTERS = ("drawtext", "pad")
-FiltersLiteral = Literal["drawtext", "pad"]
+SUPPORTED_FILTERS = ("drawtext", "pad", "fps")
+FiltersLiteral = Literal["drawtext", "pad", "fps"]
 
 
 class GeneralFilterSettings(TypedDict):
@@ -39,6 +39,10 @@ class Pad(GeneralFilterSettings):
     y: NotRequired[int]
 
 
+class Fps(GeneralFilterSettings):
+    fps: NotRequired[int]
+
+
 class Filters(TypedDict):
     drawtext: Drawtext
     pad: Pad
@@ -50,3 +54,5 @@ def filtermap(filter: FiltersLiteral) -> type[GeneralFilterSettings]:
             return Drawtext
         case "pad":
             return Pad
+        case "fps":
+            return Fps
