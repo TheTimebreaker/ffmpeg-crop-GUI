@@ -1,6 +1,17 @@
 <h1>Welcome to FFmpeg Crop GUI</h1>
 It's another GUI wrapper for one of the best open source projects ever!
 
+<h2>Features</h2>
+The main idea behind this project for me was that I often wanted to do simple stuff like cutting away the final few seconds of a video or cropping into the video to remove black borders from a video that doesn't need them. However, I also didn't want to memorize all the ffmpeg command line magic and debug it constantly just because I missed an apostrophe somewhere.
+
+So I developed this program, which makes simple edits like that a matter of seconds instead of minutes.
+
+Features include:
+
+* Easy access to cropping and trimming
+* Audio normalization
+* Limited access to advanced filters like drawing text onto a video
+
 <h2>Requirements</h2>
 
 * `ffmpeg`: needs to be installed in such a way that you can run it anywhere from the console.
