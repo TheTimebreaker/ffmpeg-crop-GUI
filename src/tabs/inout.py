@@ -312,7 +312,7 @@ class InOut(ttk.Frame):
         self.parent._reset_to_defaults()
 
         v = media_info.get_video_info(path)
-        self.max_volume = v.max_volume
+        self.parent.max_volume = v.max_volume
         self.gui_vars.settings["general"]["file"]["var"].set(path)
 
         self.gui_vars.settings["crop"]["width"]["var"].set(v.width)
