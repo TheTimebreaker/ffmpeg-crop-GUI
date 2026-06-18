@@ -190,7 +190,7 @@ class GUI:
                 if filter == "drawtext" and arg_name == "text":  # workaround for newline characters.
                     tmppath = Path(f"ffmpeg_text_tempfile_{i}.txt").resolve()
                     self.cleanup_files.append(tmppath)
-                    with open(tmppath, encoding="utf-8", mode="w") as f:
+                    with open(tmppath, encoding="utf-8", mode="w", newline="\n") as f:
                         f.write(arg_val.replace("\\n", "\n"))
 
                     entry_args.append(f"textfile='{ffmpeg_drawtext_escape(str(tmppath))}'")
