@@ -146,7 +146,7 @@ class VideofilterArgsDialog:
             arg_cb = ttk.Combobox(self.table_frame, values=available_options, textvariable=arg_var, width=20)
             arg_cb.grid(row=idx, column=0, padx=5, pady=2)
             value_entry = tk.Entry(self.table_frame, textvariable=value_var, width=20)
-            value_entry.grid(row=idx, column=1, padx=5, pady=2)
+            value_entry.grid(row=idx, column=1, padx=5, pady=2, sticky="ew")
             delete_btn = tk.Button(self.table_frame, text="Remove", command=lambda i=idx: self.remove_row(i))  # type: ignore
             delete_btn.grid(row=idx, column=2, padx=5, pady=2)
 
