@@ -33,11 +33,12 @@ class VideofilterArgsDialog:
 
         # Frame for table
         self.table_frame = tk.Frame(self.top)
-        self.table_frame.pack(padx=10, pady=10)
+        self.table_frame.pack(padx=10, pady=10, fill="x", expand=True)
+        self.table_frame.grid_columnconfigure(1, weight=1)
 
         # Header
         tk.Label(self.table_frame, text="Argument").grid(row=0, column=0, padx=5)
-        tk.Label(self.table_frame, text="Value").grid(row=0, column=1, padx=5)
+        tk.Label(self.table_frame, text="Value").grid(row=0, column=1, padx=5, sticky="ew")
 
         # Add initial row(s)
         if self.prefilled_args:
@@ -110,7 +111,7 @@ class VideofilterArgsDialog:
         arg_cb = ttk.Combobox(self.table_frame, values=available_options, textvariable=arg_var, width=20)
         arg_cb.grid(row=row_index, column=0, padx=5, pady=2)
         value_entry = tk.Entry(self.table_frame, textvariable=value_var, width=20)
-        value_entry.grid(row=row_index, column=1, padx=5, pady=2)
+        value_entry.grid(row=row_index, column=1, padx=5, pady=2, sticky="ew")
         delete_btn = tk.Button(self.table_frame, text="Remove", command=lambda: self.remove_row(row_index))
         delete_btn.grid(row=row_index, column=2, padx=5, pady=2)
 
@@ -146,7 +147,7 @@ class VideofilterArgsDialog:
             arg_cb.grid(row=idx, column=0, padx=5, pady=2)
             value_entry = tk.Entry(self.table_frame, textvariable=value_var, width=20)
             value_entry.grid(row=idx, column=1, padx=5, pady=2)
-            delete_btn = tk.Button(self.table_frame, text="Remove", command=lambda i=idx: self.remove_row(i))  # type:ignore
+            delete_btn = tk.Button(self.table_frame, text="Remove", command=lambda i=idx: self.remove_row(i))  # type: ignore
             delete_btn.grid(row=idx, column=2, padx=5, pady=2)
 
     def on_ok(self) -> None:
@@ -209,14 +210,14 @@ class Videofilter(ttk.Frame):
     ) -> None:
         super().__init__(
             master,
-            border=border,  # type:ignore
-            borderwidth=borderwidth,  # type:ignore
+            border=border,  # type: ignore
+            borderwidth=borderwidth,  # type: ignore
             class_=class_,
             cursor=cursor,
             height=height,
-            name=name,  # type:ignore
-            padding=padding,  # type:ignore
-            relief=relief,  # type:ignore
+            name=name,  # type: ignore
+            padding=padding,  # type: ignore
+            relief=relief,  # type: ignore
             style=style,
             takefocus=takefocus,
             width=width,
@@ -287,14 +288,14 @@ class Videofilter(ttk.Frame):
                 text="↑",
                 width=2,
                 state=up_button_state(row),
-                command=lambda ia=row, ib=row - 1: self.swap_videofilter_args(ia, ib),  # type:ignore
+                command=lambda ia=row, ib=row - 1: self.swap_videofilter_args(ia, ib),  # type: ignore
             ).grid(row=0, column=0)
             ttk.Button(
                 button_frame,
                 text="↓",
                 width=2,
                 state=down_button_state(row),
-                command=lambda ia=row, ib=row + 1: self.swap_videofilter_args(ia, ib),  # type:ignore
+                command=lambda ia=row, ib=row + 1: self.swap_videofilter_args(ia, ib),  # type: ignore
             ).grid(row=0, column=1)
             ttk.Label(self.videofilter_filters_frame, text=filter, justify="left").grid(
                 row=row,
@@ -314,12 +315,12 @@ class Videofilter(ttk.Frame):
             ttk.Button(
                 self.videofilter_filters_frame,
                 text="Edit",
-                command=lambda f=filter, e=entry: self.editvideofilter_dialog(f, e),  # type:ignore
+                command=lambda f=filter, e=entry: self.editvideofilter_dialog(f, e),  # type: ignore
             ).grid(row=row, column=3, sticky="ew", padx=self.padx, pady=self.pady)
             ttk.Button(
                 self.videofilter_filters_frame,
                 text="Remove",
-                command=lambda f=filter, e=entry: self.removevideofilter(f, e),  # type:ignore
+                command=lambda f=filter, e=entry: self.removevideofilter(f, e),  # type: ignore
             ).grid(row=row, column=4, sticky="ew", padx=self.padx, pady=self.pady)
             row += 1
 
@@ -331,8 +332,8 @@ class Videofilter(ttk.Frame):
         else:
             selected_filter = cast(filters.FiltersLiteral, filter)
         selected_typeddict = filters.filtermap(selected_filter)
-        required = list(selected_typeddict.__required_keys__)  # type:ignore
-        optional = list(selected_typeddict.__optional_keys__)  # type:ignore
+        required = list(selected_typeddict.__required_keys__)  # type: ignore
+        optional = list(selected_typeddict.__optional_keys__)  # type: ignore
 
         dialog = VideofilterArgsDialog(
             self.root,
