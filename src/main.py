@@ -3,6 +3,7 @@ import shlex
 import subprocess
 import sys
 import tkinter as tk
+import uuid
 from pathlib import Path
 from tkinter import messagebox, ttk
 from typing import Literal
@@ -186,9 +187,9 @@ class GUI:
         entry_strs = []
         for filter, individual_call in self.gui_vars.video_filter_args:
             entry_args = []
-            for i, (arg_name, arg_val) in enumerate(individual_call.items()):
+            for arg_name, arg_val in individual_call.items():
                 if filter == "drawtext" and arg_name == "text":  # workaround for newline characters.
-                    tmppath = Path(f"ffmpeg_text_tempfile_{i}.txt").resolve()
+                    tmppath = Path(f"text_{uuid.uuid4()}.tmp.txt").resolve()
                     self.cleanup_files.append(tmppath)
                     with open(tmppath, encoding="utf-8", mode="w", newline="\n") as f:
                         f.write(arg_val.replace("\\n", "\n"))
