@@ -45,14 +45,14 @@ class InOut(ttk.Frame):
     ) -> None:
         super().__init__(
             master,
-            border=border,  # type:ignore
-            borderwidth=borderwidth,  # type:ignore
+            border=border,  # type: ignore
+            borderwidth=borderwidth,  # type: ignore
             class_=class_,
             cursor=cursor,
             height=height,
-            name=name,  # type:ignore
-            padding=padding,  # type:ignore
-            relief=relief,  # type:ignore
+            name=name,  # type: ignore
+            padding=padding,  # type: ignore
+            relief=relief,  # type: ignore
             style=style,
             takefocus=takefocus,
             width=width,
@@ -83,8 +83,8 @@ class InOut(ttk.Frame):
         )
         self.downloadlocation_entry.grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady)
 
-        self.drop_target_register(DND_FILES)  # type:ignore
-        self.dnd_bind(  # type:ignore
+        self.drop_target_register(DND_FILES)  # type: ignore
+        self.dnd_bind(  # type: ignore
             "<<Drop>>",
             self.set_file_ondrop,
         )
@@ -160,7 +160,7 @@ class InOut(ttk.Frame):
                 f,
                 from_=0,
                 to=51,
-                variable=self.gui_vars.settings["libx264"]["crf"]["var"],  # type:ignore
+                variable=self.gui_vars.settings["libx264"]["crf"]["var"],  # type: ignore
                 showvalue=True,
                 orient="horizontal",
             ).grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady)
@@ -237,7 +237,7 @@ class InOut(ttk.Frame):
                 f,
                 from_=0,
                 to=51,
-                variable=self.gui_vars.settings["libx265"]["crf"]["var"],  # type:ignore
+                variable=self.gui_vars.settings["libx265"]["crf"]["var"],  # type: ignore
                 showvalue=True,
                 orient="horizontal",
             ).grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady)

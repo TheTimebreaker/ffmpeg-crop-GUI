@@ -9,7 +9,7 @@ from pathlib import Path
 from tkinter import ttk
 from typing import Any, Literal
 
-from fontTools.ttLib import TTFont  # type:ignore
+from fontTools.ttLib import TTFont  # type: ignore
 
 
 def select_font_path(parent: tk.Tk | tk.Toplevel) -> Path | Literal[False]:
@@ -114,7 +114,7 @@ class SearchableFont:
     def _create_widgets(self) -> None:
         for item in self.items:
             label = tk.Label(self.scrollable_frame, text=item, anchor="nw")
-            label.bind("<Button-1>", lambda _event, text=item, widget=label: self._on_item_click(text, widget))  # type:ignore
+            label.bind("<Button-1>", lambda _event, text=item, widget=label: self._on_item_click(text, widget))  # type: ignore
             label.bind("<Enter>", self.on_enter)
             label.bind("<Leave>", self.on_leave)
             self.filtered_widgets.append((item, label))

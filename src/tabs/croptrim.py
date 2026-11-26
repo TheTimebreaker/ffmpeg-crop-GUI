@@ -43,14 +43,14 @@ class CropTrim(ttk.Frame):
     ) -> None:
         super().__init__(
             master,
-            border=border,  # type:ignore
-            borderwidth=borderwidth,  # type:ignore
+            border=border,  # type: ignore
+            borderwidth=borderwidth,  # type: ignore
             class_=class_,
             cursor=cursor,
             height=height,
-            name=name,  # type:ignore
-            padding=padding,  # type:ignore
-            relief=relief,  # type:ignore
+            name=name,  # type: ignore
+            padding=padding,  # type: ignore
+            relief=relief,  # type: ignore
             style=style,
             takefocus=takefocus,
             width=width,

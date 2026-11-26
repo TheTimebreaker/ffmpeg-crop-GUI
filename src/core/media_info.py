@@ -80,7 +80,7 @@ def get_video_info(path: str) -> VideoInfo:
             path,
         ]
 
-        result = subprocess.run(cmd, **subprocess_kwargs)  # type:ignore # necessary because mypy is stupid with overloads
+        result = subprocess.run(cmd, **subprocess_kwargs)  # type: ignore # necessary because mypy is stupid with overloads
         data = json.loads(result.stdout)
 
         stream = data["streams"][0]
@@ -116,7 +116,7 @@ def get_video_info(path: str) -> VideoInfo:
         ]
 
         logging.info(" ".join(cmd))
-        result = subprocess.run(cmd, **subprocess_kwargs)  # type:ignore # necessary because mypy is stupid with overloads
+        result = subprocess.run(cmd, **subprocess_kwargs)  # type: ignore # necessary because mypy is stupid with overloads
         string = result.stderr
         logging.debug(string)
         for line in string.split("\n"):
