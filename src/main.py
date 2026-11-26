@@ -22,6 +22,11 @@ from send2trash import send2trash  # type: ignore[import-untyped]
 from core import gui_vars, media_info
 from tabs import croptrim, inout, videofilter
 
+# TODO: dont reset encoder settings
+# TODO: add reset encoder settings button
+# TODO: audio encoder
+# TODO: progress bar
+
 
 def printable_command(cmd: list[str]) -> str:
     if sys.platform == "win32":
