@@ -1,4 +1,4 @@
-<h1>Welcome to FFmpeg Crop GUI</h1>
+<h1>FFmpeg Crop GUI</h1>
 It's another GUI wrapper for one of the best open source projects ever!
 
 <h2>Features</h2>
@@ -15,7 +15,6 @@ Features include:
 <h2>Requirements</h2>
 
 * `ffmpeg`: needs to be installed in such a way that you can run it anywhere from the console.
-* `Python 3.14` and `PySide6` (installed automatically with the project dependencies)
 
 <h2>Installation</h2>
 
@@ -24,7 +23,7 @@ Features include:
 * Compile it yourself
     * Download the repository (by using `git clone`)
     * Open the repository directory in your terminal (the repo directory is where the directory `/src` and the file `Makefile` are)
-    * Install dependencies with uv: `uv sync --group build`
+    * Install dependencies with uv: `uv sync --build`
     * Run the application with `uv run python src/main.py`
     * Run either `make build` if you have make installed or `pyinstaller ffmpeg_crop_gui.spec`
     * The compiled executable should appear under `/dist`
