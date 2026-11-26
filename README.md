@@ -15,7 +15,7 @@ Features include:
 <h2>Requirements</h2>
 
 * `ffmpeg`: needs to be installed in such a way that you can run it anywhere from the console.
-* `Python 3.14` with `tkinter` working (the latter should be the default on Windows, but Linux may be a bit more work)
+* `Python 3.14` and `PySide6` (installed automatically with the project dependencies)
 
 <h2>Installation</h2>
 
@@ -24,15 +24,7 @@ Features include:
 * Compile it yourself
     * Download the repository (by using `git clone`)
     * Open the repository directory in your terminal (the repo directory is where the directory `/src` and the file `Makefile` are)
-    * Create a virtual environment with Python 3.14 by running any of the following (verify first that calling python in the way youre doing it actually is using python 3.14):
-        * `python3.14 -m venv .venv`
-        * `python -m venv .venv`
-        * `py -m venv .venv`
-    * Activate the virtual environment
-        * Windows: `.venv\Scripts\activate`
-        * Linux: depends on console, usually some variation of `source .venv\bin\activate`
-        * MacOS: idk, probably similar to Linux though
-    * Install requirements: `pip install . && pip install pyinstaller`
-        * <i>These are the requirements of the program and NOT the development requirements. For developing, run `pip install -r requirements.txt`</i>
+    * Install dependencies with uv: `uv sync --group build`
+    * Run the application with `uv run python src/main.py`
     * Run either `make build` if you have make installed or `pyinstaller ffmpeg_crop_gui.spec`
     * The compiled executable should appear under `/dist`

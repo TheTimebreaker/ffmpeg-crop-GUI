@@ -1,4 +1,4 @@
-from typing import Literal, NotRequired, TypedDict
+from typing import Literal, NotRequired, TypedDict, cast
 
 SUPPORTED_FILTERS = ("drawtext", "pad", "fps")
 FiltersLiteral = Literal["drawtext", "pad", "fps"]
@@ -56,3 +56,10 @@ def filtermap(filter: FiltersLiteral) -> type[GeneralFilterSettings]:
             return Pad
         case "fps":
             return Fps
+
+
+def filter_arguments(filter: FiltersLiteral) -> tuple[list[str], list[str]]:
+    schema = filtermap(filter)
+    required = cast(frozenset[str], schema.__required_keys__)  # type: ignore[attr-defined]
+    optional = cast(frozenset[str], schema.__optional_keys__)  # type: ignore[attr-defined]
+    return list(required), list(optional)

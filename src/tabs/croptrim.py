@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import tkinter as tk
-from tkinter import ttk
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
+
+from PySide6.QtWidgets import QCheckBox, QFormLayout, QGroupBox, QHBoxLayout, QSpinBox, QVBoxLayout, QWidget
 
 from core import common, gui_vars
 
@@ -10,157 +10,85 @@ if TYPE_CHECKING:
     from main import GUI
 
 
-class CropTrim(ttk.Frame):
-    padx = 5
-    pady = 5
-
-    def __init__(
-        self,
-        master: ttk.Notebook | None = None,
-        *,
-        border: float | str | None = None,
-        borderwidth: float | str | None = None,
-        class_: Any = "",
-        cursor: Any = "",
-        height: int = 0,
-        name: str | None = None,
-        padding: (
-            float
-            | str
-            | tuple[float | str]
-            | tuple[float | str, float | str]
-            | tuple[float | str, float | str, float | str]
-            | tuple[float | str, float | str, float | str, float | str]
-            | None
-        ) = None,
-        relief: Literal["raised", "sunken", "flat", "ridge", "solid", "groove"] | None = None,
-        style: Any = "",
-        takefocus: Any = "",
-        width: int = 0,
-        parent: GUI,
-        root: tk.Tk,
-        gui_vars: gui_vars.GuiVars,
-    ) -> None:
-        super().__init__(
-            master,
-            border=border,  # type: ignore
-            borderwidth=borderwidth,  # type: ignore
-            class_=class_,
-            cursor=cursor,
-            height=height,
-            name=name,  # type: ignore
-            padding=padding,  # type: ignore
-            relief=relief,  # type: ignore
-            style=style,
-            takefocus=takefocus,
-            width=width,
-        )
-        self.gui_vars = gui_vars
-        self.parent = parent
-        self.root = root
-
+class CropTrim(QWidget):
+    def __init__(self, parent: GUI, state: gui_vars.GuiVars) -> None:
+        super().__init__()
+        self.gui_vars = state
+        self.controller = parent
+        self._spinboxes: dict[tuple[str, str], QSpinBox] = {}
         self._build_ui()
 
+    def _value(self, section: str, key: str) -> gui_vars.Value:
+        return self.gui_vars.settings[section][key]["var"]
+
     def _build_ui(self) -> None:
-        self.columnconfigure(0, weight=0)
-        self.columnconfigure(1, weight=1)
-        self.columnconfigure(2, weight=1)
-        crop_enabled = ttk.Checkbutton(self, variable=self.gui_vars.settings["crop"]["crop_enabled"]["var"], text="Enable Crop")
-        crop_enabled.grid(row=0, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 14, 14, 14)
+
+        crop_group = QGroupBox("Crop")
+        crop_layout = QFormLayout(crop_group)
+        self.crop_enabled = QCheckBox("Enable crop")
+        self.crop_enabled.toggled.connect(self._value("crop", "crop_enabled").set)
+        crop_layout.addRow("", self.crop_enabled)
+        crop_layout.addRow("Top-left corner (X / Y)", self._spin_pair("crop", "left_top_x", "left_top_y"))
+        crop_layout.addRow("Box dimensions (width / height)", self._spin_pair("crop", "width", "height"))
         common.ToolTip(
-            crop_enabled,
-            text="Allows the encoder to CROP the video with the settings specified here."
-            "\nThe system is smart and will only actually crop if these values were changed from the original values.",
+            self.crop_enabled,
+            "Crop the video using the values below. The crop is only applied if the values differ from the original video.",
         )
+        layout.addWidget(crop_group)
 
-        # Left top pixel
-        ttk.Label(
-            self,
-            text="Top left corner (X / Y)",
-        ).grid(row=2, column=0, sticky="w", padx=self.padx, pady=self.pady)
-        ttk.Spinbox(
-            self,
-            textvariable=self.gui_vars.settings["crop"]["left_top_x"]["var"],
-            from_=0,
-            to=50000,
-        ).grid(row=2, column=1, sticky="ew", padx=self.padx, pady=self.pady)
-        ttk.Spinbox(
-            self,
-            textvariable=self.gui_vars.settings["crop"]["left_top_y"]["var"],
-            from_=0,
-            to=50000,
-        ).grid(row=2, column=2, sticky="ew", padx=self.padx, pady=self.pady)
-
-        # Box Dimensions
-        ttk.Label(
-            self,
-            text="Box width (X / Y)",
-        ).grid(row=3, column=0, sticky="w", padx=self.padx, pady=self.pady)
-        ttk.Spinbox(
-            self,
-            textvariable=self.gui_vars.settings["crop"]["width"]["var"],
-            from_=0,
-            to=50000,
-        ).grid(row=3, column=1, sticky="ew", padx=self.padx, pady=self.pady)
-        ttk.Spinbox(
-            self,
-            textvariable=self.gui_vars.settings["crop"]["height"]["var"],
-            from_=0,
-            to=50000,
-        ).grid(row=3, column=2, sticky="ew", padx=self.padx, pady=self.pady)
-
-        ttk.Separator(self, orient="horizontal").grid(row=4, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
-
-        # Trim
-        trim_enabled = ttk.Checkbutton(self, variable=self.gui_vars.settings["trim"]["trim_enabled"]["var"], text="Enable Trim")
-        trim_enabled.grid(row=5, column=0, columnspan=3, sticky="ew", padx=self.padx, pady=self.pady)
+        trim_group = QGroupBox("Trim")
+        trim_layout = QFormLayout(trim_group)
+        self.trim_enabled = QCheckBox("Enable trim")
+        self.trim_enabled.toggled.connect(self._value("trim", "trim_enabled").set)
+        trim_layout.addRow("", self.trim_enabled)
+        trim_layout.addRow("Start (HH : MM : SS . MS)", self._time_fields("start"))
+        trim_layout.addRow("End (HH : MM : SS . MS)", self._time_fields("end"))
         common.ToolTip(
-            trim_enabled,
-            text="Allows the encoder to TRIM the video with the settings specified here."
-            "\nThe system is smart and will only actually crop if these values were changed from the original values.",
+            self.trim_enabled,
+            "Trim the video using the timestamps below. Trimming is only applied if the timestamps differ from the original.",
         )
+        layout.addWidget(trim_group)
+        layout.addStretch(1)
+        self.sync_controls()
 
-        ttk.Label(
-            self,
-            text="Timestamp Start (HH:MM:SS.MS)",
-        ).grid(row=6, column=0, sticky="w", padx=self.padx, pady=self.pady)
-        timestamp_start_frame = ttk.Frame(self)
-        timestamp_start_frame.grid(row=6, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
-        ttk.Spinbox(
-            timestamp_start_frame, textvariable=self.gui_vars.settings["trim"]["hh_start"]["var"], from_=0, to=99, width=3, format="%02.0f"
-        ).pack(side="left", fill="x", expand=True)
-        ttk.Label(timestamp_start_frame, text=" : ").pack(side="left")
-        ttk.Spinbox(
-            timestamp_start_frame, textvariable=self.gui_vars.settings["trim"]["mm_start"]["var"], from_=0, to=59, width=3, format="%02.0f"
-        ).pack(side="left", fill="x", expand=True)
-        ttk.Label(timestamp_start_frame, text=" : ").pack(side="left")
-        ttk.Spinbox(
-            timestamp_start_frame, textvariable=self.gui_vars.settings["trim"]["ss_start"]["var"], from_=0, to=59, width=3, format="%02.0f"
-        ).pack(side="left", fill="x", expand=True)
-        ttk.Label(timestamp_start_frame, text=" . ").pack(side="left")
-        ttk.Spinbox(timestamp_start_frame, textvariable=self.gui_vars.settings["trim"]["ms_start"]["var"], from_=0, to=999, width=4).pack(
-            side="left", fill="x", expand=True
-        )
+    def _spin_pair(self, section: str, first: str, second: str) -> QWidget:
+        row = QWidget()
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.addWidget(self._spinbox(section, first, 0, 50000))
+        row_layout.addWidget(self._spinbox(section, second, 0, 50000))
+        return row
 
-        # Timestamp End
-        ttk.Label(
-            self,
-            text="Timestamp End (HH:MM:SS.MS)",
-        ).grid(row=7, column=0, sticky="w", padx=self.padx, pady=self.pady)
-        timestamp_end_frame = ttk.Frame(self)
-        timestamp_end_frame.grid(row=7, column=1, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
-        ttk.Spinbox(timestamp_end_frame, textvariable=self.gui_vars.settings["trim"]["hh_end"]["var"], from_=0, to=99, width=3, format="%02.0f").pack(
-            side="left", fill="x", expand=True
-        )
-        ttk.Label(timestamp_end_frame, text=" : ").pack(side="left")
-        ttk.Spinbox(timestamp_end_frame, textvariable=self.gui_vars.settings["trim"]["mm_end"]["var"], from_=0, to=59, width=3, format="%02.0f").pack(
-            side="left", fill="x", expand=True
-        )
-        ttk.Label(timestamp_end_frame, text=" : ").pack(side="left")
-        ttk.Spinbox(timestamp_end_frame, textvariable=self.gui_vars.settings["trim"]["ss_end"]["var"], from_=0, to=59, width=3, format="%02.0f").pack(
-            side="left", fill="x", expand=True
-        )
-        ttk.Label(timestamp_end_frame, text=" . ").pack(side="left")
-        ttk.Spinbox(timestamp_end_frame, textvariable=self.gui_vars.settings["trim"]["ms_end"]["var"], from_=0, to=999, width=4).pack(
-            side="left", fill="x", expand=True
-        )
+    def _time_fields(self, which: str) -> QWidget:
+        row = QWidget()
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        for index, (suffix, maximum) in enumerate((("hh", 99), ("mm", 59), ("ss", 59), ("ms", 999))):
+            if index:
+                row_layout.addWidget(self._separator("." if index == 3 else ":"))
+            key = f"{suffix}_{which}"
+            row_layout.addWidget(self._spinbox("trim", key, 0, maximum))
+        row_layout.addStretch(1)
+        return row
+
+    @staticmethod
+    def _separator(text: str) -> QWidget:
+        from PySide6.QtWidgets import QLabel
+
+        return QLabel(text)
+
+    def _spinbox(self, section: str, key: str, minimum: int, maximum: int) -> QSpinBox:
+        box = QSpinBox()
+        box.setRange(minimum, maximum)
+        box.setKeyboardTracking(False)
+        box.valueChanged.connect(self._value(section, key).set)
+        self._spinboxes[(section, key)] = box
+        return box
+
+    def sync_controls(self) -> None:
+        self.crop_enabled.setChecked(self.gui_vars.settings["crop"]["crop_enabled"]["var"].get())
+        self.trim_enabled.setChecked(self.gui_vars.settings["trim"]["trim_enabled"]["var"].get())
+        for (section, key), box in self._spinboxes.items():
+            box.setValue(self.gui_vars.settings[section][key]["var"].get())

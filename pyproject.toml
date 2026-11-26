@@ -7,8 +7,7 @@ readme="README.md"
 requires-python=">=3.14"
 dependencies = [
   "Send2Trash~=2.1.0",
-  "fonttools~=4.61.1",
-  "tkinterdnd2~=0.4.3",
+  "PySide6>=6.10.0",
 ]
 
 [dependency-groups]
@@ -103,7 +102,6 @@ module = [
   "ffmpeg",
   "psd_tools",
   "plyer",
-  "tkinterdnd2",
   "ciso8601"
 ]
 ignore_missing_imports = true

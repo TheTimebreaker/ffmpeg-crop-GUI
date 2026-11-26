@@ -1,10 +1,24 @@
 from __future__ import annotations
 
-import tkinter as tk
-from tkinter import filedialog, ttk
-from typing import TYPE_CHECKING, Any, Final, Literal
+import subprocess
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Final, override
 
-from tkinterdnd2 import DND_FILES
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QMouseEvent
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
+)
 
 from core import common, gui_vars, media_info
 
@@ -12,328 +26,189 @@ if TYPE_CHECKING:
     from main import GUI
 
 
-class InOut(ttk.Frame):
-    padx = 5
-    pady = 5
+class DoubleClickLabel(QLabel):
+    def __init__(self, callback: Callable[[], None]) -> None:
+        super().__init__()
+        self._callback = callback
 
-    def __init__(
-        self,
-        master: ttk.Notebook | None = None,
-        *,
-        border: float | str | None = None,
-        borderwidth: float | str | None = None,
-        class_: Any = "",
-        cursor: Any = "",
-        height: int = 0,
-        name: str | None = None,
-        padding: (
-            float
-            | str
-            | tuple[float | str]
-            | tuple[float | str, float | str]
-            | tuple[float | str, float | str, float | str]
-            | tuple[float | str, float | str, float | str, float | str]
-            | None
-        ) = None,
-        relief: Literal["raised", "sunken", "flat", "ridge", "solid", "groove"] | None = None,
-        style: Any = "",
-        takefocus: Any = "",
-        width: int = 0,
-        parent: GUI,
-        root: tk.Tk,
-        gui_vars: gui_vars.GuiVars,
-    ) -> None:
-        super().__init__(
-            master,
-            border=border,  # type: ignore
-            borderwidth=borderwidth,  # type: ignore
-            class_=class_,
-            cursor=cursor,
-            height=height,
-            name=name,  # type: ignore
-            padding=padding,  # type: ignore
-            relief=relief,  # type: ignore
-            style=style,
-            takefocus=takefocus,
-            width=width,
-        )
-        self.gui_vars = gui_vars
-        self.parent = parent
-        self.root = root
-        self.CODECS_VIDEO: Final = (  # pylint:disable=C0103
-            "libx264",
-            "libx265",
-        )
+    @override
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
+        self._callback()
+        super().mouseDoubleClickEvent(event)
 
+
+class InOut(QWidget):
+    CODECS_VIDEO: Final = ("libx264", "libx265")
+    PRESETS: Final = ("ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo")
+    TUNES: Final = {
+        "libx264": ("DEFAULT", "film", "animation", "grain", "stillimage", "fastdecode", "zerolatency"),
+        "libx265": ("DEFAULT", "grain", "fastdecode", "zerolatency"),
+    }
+
+    def __init__(self, parent: GUI, state: gui_vars.GuiVars) -> None:
+        super().__init__()
+        self.controller = parent
+        self.gui_vars = state
         self._build_ui()
 
+    def _value(self, section: str, key: str) -> gui_vars.Value:
+        return self.gui_vars.settings[section][key]["var"]
+
     def _build_ui(self) -> None:
-        self.columnconfigure(0, weight=0)
-        self.columnconfigure(1, weight=1)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 14, 14, 14)
 
-        self.file_source_label = ttk.Label(
-            self,
-            text="Source file",
-        )
-        self.file_source_label.grid(row=0, column=0, sticky="ew", padx=self.padx, pady=self.pady)
+        source_group = QGroupBox("Source file")
+        source_layout = QHBoxLayout(source_group)
+        self.file_label = DoubleClickLabel(self.set_file_dialogue)
+        self.file_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.file_label.setWordWrap(True)
+        self.file_label.setMinimumHeight(44)
+        self.file_label.setStyleSheet("QLabel { padding: 8px; border: 1px solid palette(mid); border-radius: 4px; }")
+        self.browse_button = self._button("Browse…", self.set_file_dialogue)
+        source_layout.addWidget(self.file_label, 1)
+        source_layout.addWidget(self.browse_button)
+        layout.addWidget(source_group)
 
-        self.downloadlocation_entry = ttk.Label(
-            self,
-            textvariable=self.gui_vars.settings["general"]["file"]["var"],
-        )
-        self.downloadlocation_entry.grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+        settings_group = QGroupBox("Additional settings")
+        settings_layout = QFormLayout(settings_group)
+        self.normalize_audio = QCheckBox("Automatically normalize audio to -1.0 dB")
+        self.normalize_audio.toggled.connect(self._value("general", "normalize_audio").set)
+        settings_layout.addRow("", self.normalize_audio)
 
-        self.drop_target_register(DND_FILES)  # type: ignore
-        self.dnd_bind(  # type: ignore
-            "<<Drop>>",
-            self.set_file_ondrop,
-        )
-        self.downloadlocation_entry.bind("<Double-Button-1>", self.set_file_dialogue)
-
-        ttk.Separator(self, orient="horizontal").grid(row=6, column=0, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
-
-        ttk.Label(
-            self,
-            text="Additional settings",
-        ).grid(row=7, column=0, sticky="ew", padx=self.padx, pady=self.pady)
-
-        self.autonormalize_btn = ttk.Checkbutton(
-            self,
-            text="Automatically normalize audio to -1.0 dB",
-            variable=self.gui_vars.settings["general"]["normalize_audio"]["var"],
-        )
-        self.autonormalize_btn.grid(row=7, column=1, sticky="ew", padx=self.padx, pady=self.pady)
-
-        ttk.Separator(self, orient="horizontal").grid(row=8, column=0, columnspan=2, sticky="ew", padx=self.padx, pady=self.pady)
-        video_encoder_label = ttk.Label(self, text="Video encoder\n(if needed)")
-        video_encoder_label.grid(row=9, column=0, sticky="ew", padx=self.padx, pady=self.pady)
+        self.force_reencoding = QCheckBox("Force reencoding")
+        self.force_reencoding.toggled.connect(self._value("general", "force_reencoding_video").set)
+        settings_layout.addRow("Video encoder (if needed)", self.force_reencoding)
         common.ToolTip(
-            video_encoder_label,
-            "\n".join(
-                [
-                    "This tool will attempt to copy the video feed if possible and",
-                    "only reencode the video with settings selected here if needed.",
-                    "Settings that require reencoding include cropping and trimming.",
-                ]
-            ),
+            self.force_reencoding,
+            "Video is copied when possible and only re-encoded when required. Cropping and trimming require re-encoding.",
         )
-        ttk.Checkbutton(self, text="Force reencoding", variable=self.gui_vars.settings["general"]["force_reencoding_video"]["var"]).grid(
-            row=9, column=1, padx=self.padx, pady=self.pady, sticky="ew"
-        )
-        encoder = ttk.Combobox(
-            self, textvariable=self.gui_vars.settings["general"]["selected_encoder_video"]["var"], values=self.CODECS_VIDEO, state="readonly"
-        )
-        encoder.grid(sticky="ew", row=10, column=1, padx=self.padx, pady=self.pady)
-        encoder.bind("<<ComboboxSelected>>", self.update_codec_frames)
 
-        self.codec_options_frame = ttk.Frame(self)
-        self.codec_options_frame.grid(row=11, column=1, sticky="ew", padx=self.padx, pady=self.pady)
-        self._init_codec_frames()
-        self.update_codec_frames(None)
+        self.encoder = QComboBox()
+        self.encoder.addItems(self.CODECS_VIDEO)
+        self.encoder.currentTextChanged.connect(self._select_encoder)
+        settings_layout.addRow("Encoder", self.encoder)
+        layout.addWidget(settings_group)
 
-        self.grid_rowconfigure(12, weight=1)
-
-    def _init_codec_frames(self) -> None:
-        def _libx264() -> ttk.LabelFrame:
-            f = ttk.LabelFrame(self.codec_options_frame, text="libx264 options")
-            f.columnconfigure(0, weight=0)
-            f.columnconfigure(1, weight=1)
-
-            # CRF
-            crf = ttk.Label(f, text="CRF")
-            crf.grid(row=0, column=0, sticky="w", padx=self.padx, pady=self.pady)
+        self.codec_options: dict[str, QGroupBox] = {}
+        self.crf_sliders: dict[str, QSlider] = {}
+        self.preset_boxes: dict[str, QComboBox] = {}
+        self.tune_boxes: dict[str, QComboBox] = {}
+        for codec in self.CODECS_VIDEO:
+            group = QGroupBox(f"{codec} options")
+            form = QFormLayout(group)
+            slider = QSlider(Qt.Orientation.Horizontal)
+            slider.setRange(0, 51)
+            slider.valueChanged.connect(self._value(codec, "crf").set)
+            slider_value = QLabel()
+            slider.valueChanged.connect(lambda value, label=slider_value: label.setText(str(value)))
+            slider_row = QWidget()
+            slider_layout = QHBoxLayout(slider_row)
+            slider_layout.setContentsMargins(0, 0, 0, 0)
+            slider_layout.addWidget(slider, 1)
+            slider_layout.addWidget(slider_value)
+            form.addRow("CRF", slider_row)
             common.ToolTip(
-                crf,
-                "\n".join(
-                    [
-                        "Constant Rate Factor",
-                        "Lower = less compression but larger filesize",
-                        "Higher = more compression but smaller filesize",
-                        "0: lossless for 8bit video and basically lossless for 10bit",
-                        "17-18: visually lossless (the output should look the same even though it is technically compressed lossy)",
-                        "23: Default value",
-                        "51: Worst possible quality",
-                    ]
-                ),
+                slider,
+                "Constant Rate Factor: lower values mean higher quality and larger files. 0 is lossless; 51 is the lowest quality.",
             )
-            tk.Scale(
-                f,
-                from_=0,
-                to=51,
-                variable=self.gui_vars.settings["libx264"]["crf"]["var"],  # type: ignore
-                showvalue=True,
-                orient="horizontal",
-            ).grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady)
 
-            # Preset
-            preset = ttk.Label(f, text="Preset")
-            preset.grid(row=1, column=0, sticky="w", padx=self.padx, pady=self.pady)
-            common.ToolTip(
-                preset,
-                "\n".join(
-                    [
-                        "Determines the general speed of the process (sorted Fastest > Slowest)",
-                        "If you target a certain filesize or constant bitrate you will receive higher quality with slower presets.",
-                        "Default: medium",
-                        "Placebo is basically useless, since it gives miniscule returns for vastly longer encoding times",
-                    ]
-                ),
-            )
-            ttk.Combobox(
-                f,
-                textvariable=self.gui_vars.settings["libx264"]["preset"]["var"],
-                values=["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"],
-                state="readonly",
-            ).grid(row=1, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+            preset = QComboBox()
+            preset.addItems(self.PRESETS)
+            preset.currentTextChanged.connect(self._value(codec, "preset").set)
+            form.addRow("Preset", preset)
+            common.ToolTip(preset, "Slower presets trade encoding time for better compression. The default is medium.")
 
-            # Tune
-            tune = ttk.Label(f, text="Tune")
-            tune.grid(row=2, column=0, sticky="w", padx=self.padx, pady=self.pady)
-            common.ToolTip(
-                tune,
-                "\n".join(
-                    [
-                        "Specifying a tune will make the encoder target certain types of content better.",
-                        "film: use for high quality movie content; lowers deblocking",
-                        "animation: good for cartoons; uses higher deblocking and more reference frames",
-                        "grain: preserves the grain structure in old, grainy film material",
-                        "stillimage: good for slideshow-like content",
-                        "fastdecode: allows faster decoding by disabling certain filters",
-                        "zerolatency: good for fast encoding and low-latency streaming",
-                        "<Source: Official documentation>",
-                    ]
-                ),
-            )
-            ttk.Combobox(
-                f,
-                textvariable=self.gui_vars.settings["libx264"]["tune"]["var"],
-                values=["DEFAULT", "film", "animation", "grain", "stillimage", "fastdecode", "zerolatency"],
-                state="readonly",
-            ).grid(row=2, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+            tune = QComboBox()
+            tune.addItems(self.TUNES[codec])
+            tune.currentTextChanged.connect(self._value(codec, "tune").set)
+            form.addRow("Tune", tune)
 
-            return f
+            self.codec_options[codec] = group
+            self.crf_sliders[codec] = slider
+            self.preset_boxes[codec] = preset
+            self.tune_boxes[codec] = tune
+            layout.addWidget(group)
 
-        def _libx265() -> ttk.LabelFrame:
-            f = ttk.LabelFrame(self.codec_options_frame, text="libx265 options")
-            f.columnconfigure(0, weight=0)
-            f.columnconfigure(1, weight=1)
+        layout.addStretch(1)
+        self.sync_controls()
 
-            # CRF
-            crf = ttk.Label(f, text="CRF")
-            crf.grid(row=0, column=0, sticky="w", padx=self.padx, pady=self.pady)
-            common.ToolTip(
-                crf,
-                "\n".join(
-                    [
-                        "Constant Rate Factor",
-                        "Lower = less compression but larger filesize",
-                        "Higher = more compression but smaller filesize",
-                        "28: Default. Visually equal to libx264's default (crf 23), but half the file size)",
-                        "51: Worst possible quality",
-                    ]
-                ),
-            )
-            tk.Scale(
-                f,
-                from_=0,
-                to=51,
-                variable=self.gui_vars.settings["libx265"]["crf"]["var"],  # type: ignore
-                showvalue=True,
-                orient="horizontal",
-            ).grid(row=0, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+    @staticmethod
+    def _button(text: str, callback: Callable[..., None]) -> QPushButton:
+        button = QPushButton(text)
+        button.clicked.connect(callback)
+        return button
 
-            # Preset
-            preset = ttk.Label(f, text="Preset")
-            preset.grid(row=1, column=0, sticky="w", padx=self.padx, pady=self.pady)
-            common.ToolTip(
-                preset,
-                "\n".join(
-                    [
-                        "Determines the general speed of the process (sorted Fastest > Slowest)",
-                        "If you target a certain filesize or constant bitrate you will receive higher quality with slower presets.",
-                        "Default: medium",
-                        "Placebo is basically useless, since it gives miniscule returns for vastly longer encoding times",
-                    ]
-                ),
-            )
-            ttk.Combobox(
-                f,
-                textvariable=self.gui_vars.settings["libx265"]["preset"]["var"],
-                values=["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"],
-                state="readonly",
-            ).grid(row=1, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+    def _select_encoder(self, encoder: str) -> None:
+        self._value("general", "selected_encoder_video").set(encoder)
+        self.update_codec_frames()
 
-            # Tune
-            tune = ttk.Label(f, text="Tune")
-            tune.grid(row=2, column=0, sticky="w", padx=self.padx, pady=self.pady)
-            common.ToolTip(
-                tune,
-                "\n".join(
-                    [
-                        "Specifying a tune will make the encoder target certain types of content better.",
-                        "grain: preserves the grain structure in old, grainy film material",
-                        "fastdecode: allows faster decoding by disabling certain filters",
-                        "zerolatency: good for fast encoding and low-latency streaming",
-                        "<Source: Official documentation>",
-                    ]
-                ),
-            )
-            ttk.Combobox(
-                f,
-                textvariable=self.gui_vars.settings["libx265"]["tune"]["var"],
-                values=["DEFAULT", "grain", "fastdecode", "zerolatency"],
-                state="readonly",
-            ).grid(row=2, column=1, sticky="ew", padx=self.padx, pady=self.pady)
+    def update_codec_frames(self) -> None:
+        selected = self.gui_vars.settings["general"]["selected_encoder_video"]["var"].get()
+        for codec, group in self.codec_options.items():
+            group.setVisible(codec == selected)
 
-            return f
+    def sync_controls(self) -> None:
+        path = self.gui_vars.settings["general"]["file"]["var"].get()
+        self.file_label.setText(str(path) if path else "Double-click or drop a video file here")
+        self.normalize_audio.setChecked(self.gui_vars.settings["general"]["normalize_audio"]["var"].get())
+        self.force_reencoding.setChecked(self.gui_vars.settings["general"]["force_reencoding_video"]["var"].get())
+        encoder = self.gui_vars.settings["general"]["selected_encoder_video"]["var"].get()
+        self.encoder.setCurrentText(encoder)
+        for codec in self.CODECS_VIDEO:
+            self.crf_sliders[codec].setValue(self.gui_vars.settings[codec]["crf"]["var"].get())
+            self.preset_boxes[codec].setCurrentText(self.gui_vars.settings[codec]["preset"]["var"].get())
+            self.tune_boxes[codec].setCurrentText(self.gui_vars.settings[codec]["tune"]["var"].get())
+        self.update_codec_frames()
 
-        self.codec_options_frames: dict[str, ttk.Frame | ttk.LabelFrame] = {
-            "libx264": _libx264(),
-            "libx265": _libx265(),
-        }
-
-    def update_codec_frames(self, _: Any = None) -> None:
-        for val in self.codec_options_frames.values():
-            val.forget()
-        selected_encoder = self.gui_vars.settings["general"]["selected_encoder_video"]["var"].get()
-        self.codec_options_frames[selected_encoder].pack(expand=True, fill="both")
-
-    def set_file_dialogue(self, _: Any) -> None:
-        path = filedialog.askopenfilename()
+    def set_file_dialogue(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, "Select video file", "", "Video files (*)")
         if path:
             self.set_file(path)
 
-    def set_file_ondrop(self, event: Any) -> None:
-        files = self.root.tk.splitlist(event.data)
-        if files:
-            self.set_file(files[0])
-
     def set_file(self, path: str) -> None:
-        self.parent._reset_to_defaults()
+        try:
+            video = media_info.get_video_info(path)
+        except (OSError, subprocess.SubprocessError, ValueError, KeyError, IndexError) as error:
+            from PySide6.QtWidgets import QMessageBox
 
-        v = media_info.get_video_info(path)
-        self.parent.max_volume = v.max_volume
+            QMessageBox.critical(self, "Unable to read video", str(error))
+            return
+
+        self.controller._reset_to_defaults()
+        self.controller.max_volume = video.max_volume
         self.gui_vars.settings["general"]["file"]["var"].set(path)
+        duration = video.duration
+        if duration.hh is None or duration.mm is None or duration.ss is None or duration.ms is None:
+            from PySide6.QtWidgets import QMessageBox
 
-        self.gui_vars.settings["crop"]["width"]["var"].set(v.width)
-        self.gui_vars.settings["crop"]["height"]["var"].set(v.height)
-        self.gui_vars.settings["crop"]["left_top_x"]["var"].set(0)
-        self.gui_vars.settings["crop"]["left_top_y"]["var"].set(0)
-        self.gui_vars.settings["crop"]["original_width"]["var"].set(v.width)
-        self.gui_vars.settings["crop"]["original_height"]["var"].set(v.height)
-        self.gui_vars.settings["crop"]["original_left_top_x"]["var"].set(0)
-        self.gui_vars.settings["crop"]["original_left_top_y"]["var"].set(0)
+            QMessageBox.critical(self, "Unable to read video", "The video duration could not be determined.")
+            return
+        for key, value in (
+            ("width", video.width),
+            ("height", video.height),
+            ("original_width", video.width),
+            ("original_height", video.height),
+            ("left_top_x", 0),
+            ("left_top_y", 0),
+            ("original_left_top_x", 0),
+            ("original_left_top_y", 0),
+        ):
+            self.gui_vars.settings["crop"][key]["var"].set(value)
 
-        self.gui_vars.settings["trim"]["hh_start"]["var"].set(0)
-        self.gui_vars.settings["trim"]["mm_start"]["var"].set(0)
-        self.gui_vars.settings["trim"]["ss_start"]["var"].set(0)
-        self.gui_vars.settings["trim"]["ms_start"]["var"].set(0)
-        self.gui_vars.settings["trim"]["hh_end"]["var"].set(v.duration.hh)
-        self.gui_vars.settings["trim"]["mm_end"]["var"].set(v.duration.mm)
-        self.gui_vars.settings["trim"]["ss_end"]["var"].set(v.duration.ss)
-        self.gui_vars.settings["trim"]["ms_end"]["var"].set(v.duration.ms)
-
-        self.gui_vars.settings["trim"]["original_hh_end"]["var"].set(v.duration.hh)
-        self.gui_vars.settings["trim"]["original_mm_end"]["var"].set(v.duration.mm)
-        self.gui_vars.settings["trim"]["original_ss_end"]["var"].set(v.duration.ss)
-        self.gui_vars.settings["trim"]["original_ms_end"]["var"].set(v.duration.ms)
+        for key, value in (
+            ("hh_start", 0),
+            ("mm_start", 0),
+            ("ss_start", 0),
+            ("ms_start", 0),
+            ("hh_end", duration.hh),
+            ("mm_end", duration.mm),
+            ("ss_end", duration.ss),
+            ("ms_end", duration.ms),
+            ("original_hh_end", duration.hh),
+            ("original_mm_end", duration.mm),
+            ("original_ss_end", duration.ss),
+            ("original_ms_end", duration.ms),
+        ):
+            self.gui_vars.settings["trim"][key]["var"].set(value)
+        self.controller.sync_controls()
