@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -70,15 +71,30 @@ class InOut(QWidget):
         source_layout.addWidget(self.browse_button)
         layout.addWidget(source_group)
 
-        settings_group = QGroupBox("Additional settings")
-        settings_layout = QFormLayout(settings_group)
+        source_separator = QFrame()
+        source_separator.setFrameShape(QFrame.Shape.HLine)
+        source_separator.setFrameShadow(QFrame.Shadow.Sunken)
+        layout.addWidget(source_separator)
+
+        audio_encoder_group = QGroupBox("Audio encoder")
+        audio_encoder_layout = QFormLayout(audio_encoder_group)
         self.normalize_audio = QCheckBox("Automatically normalize audio to -1.0 dB")
         self.normalize_audio.toggled.connect(self._value("general", "normalize_audio").set)
-        settings_layout.addRow("", self.normalize_audio)
+        audio_encoder_layout.addRow("", self.normalize_audio)
+        layout.addWidget(audio_encoder_group)
 
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        layout.addWidget(separator)
+
+        self.video_encoder_group = QGroupBox("Video encoder")
+        video_encoder_layout = QVBoxLayout(self.video_encoder_group)
+        video_encoder_settings = QWidget()
+        video_encoder_form = QFormLayout(video_encoder_settings)
         self.force_reencoding = QCheckBox("Force reencoding")
         self.force_reencoding.toggled.connect(self._value("general", "force_reencoding_video").set)
-        settings_layout.addRow("Video encoder (if needed)", self.force_reencoding)
+        video_encoder_form.addRow("Re-encode", self.force_reencoding)
         common.ToolTip(
             self.force_reencoding,
             "Video is copied when possible and only re-encoded when required. Cropping and trimming require re-encoding.",
@@ -87,8 +103,9 @@ class InOut(QWidget):
         self.encoder = QComboBox()
         self.encoder.addItems(self.CODECS_VIDEO)
         self.encoder.currentTextChanged.connect(self._select_encoder)
-        settings_layout.addRow("Encoder", self.encoder)
-        layout.addWidget(settings_group)
+        video_encoder_form.addRow("Codec", self.encoder)
+        video_encoder_layout.addWidget(video_encoder_settings)
+        layout.addWidget(self.video_encoder_group)
 
         self.codec_options: dict[str, QGroupBox] = {}
         self.crf_sliders: dict[str, QSlider] = {}
@@ -128,7 +145,7 @@ class InOut(QWidget):
             self.crf_sliders[codec] = slider
             self.preset_boxes[codec] = preset
             self.tune_boxes[codec] = tune
-            layout.addWidget(group)
+            video_encoder_layout.addWidget(group)
 
         layout.addStretch(1)
         self.sync_controls()
